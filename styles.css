@@ -813,7 +813,7 @@ body {
 }
 
 .mission-section.tracking-mode {
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 1fr;
 }
 
 .mission-left {
@@ -887,6 +887,7 @@ body {
     display: flex;
     align-items: center;
     min-width: 600px;
+    width: 100%;
     height: 120px;
 }
 
@@ -917,6 +918,37 @@ body {
     border: 3px solid rgba(0, 0, 0, 0.3);
     z-index: 2;
     margin-bottom: 8px;
+}
+
+/* 建立時間節點 - 藍色 */
+.timeline-dot.create-dot {
+    background: #3b82f6;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
+/* 警示時間節點 - 紅色 + 脈動動畫 */
+.timeline-dot.alert-dot {
+    background: #ef4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+    animation: pulse 2s infinite;
+}
+
+/* 任務時間節點 - 綠色 */
+.timeline-dot.task-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+/* 脈動動畫 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
 }
 
 .timeline-dot-task {
@@ -1014,10 +1046,11 @@ body {
 }
 
 .timeline-time {
+    position: absolute;
+    top: -25px;
     color: #00d4ff;
     font-size: 11px;
     font-weight: bold;
-    margin-bottom: 4px;
     white-space: nowrap;
 }
 
@@ -1336,17 +1369,17 @@ body {
     transform: translateY(-1px);
 }
 
-.create-rf-btn:hover {
+.create-vessel-btn:hover {
     background: #dc2626 !important;
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
 }
 
-.create-rf-btn:active {
+.create-vessel-btn:active {
     transform: translateY(0);
 }
 
-.create-rf-btn:disabled {
+.create-vessel-btn:disabled {
     background: #6b7280 !important;
     cursor: not-allowed;
     opacity: 0.5;
@@ -2388,3 +2421,92 @@ body {
     color: #1d4ed8;
     text-decoration: none;
 }
+
+
+/* ==================== 威脅警示系統樣式 ==================== */
+
+/* 威脅通知樣式 */
+.threat-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  cursor: pointer;
+  animation: slideInRight 0.3s ease-out;
+  min-width: 280px;
+}
+
+.threat-notification:hover {
+  transform: translateX(-5px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.6);
+}
+
+.threat-notification.fade-out {
+  animation: slideOutRight 0.3s ease-in;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+}
+
+.notification-icon {
+  font-size: 24px;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.notification-text {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* 事件卡警示動畫 */
+.event-card.alert-active {
+  animation: alertPulse 1s infinite;
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+}
+
+@keyframes alertPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.9);
+  }
+}
+

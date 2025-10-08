@@ -27,15 +27,62 @@
             }
         })(rawStatus);
 
-    // prefer helper; if helper missing, fallback to display->legacy color->default
-    const resolvedColor = (typeof getDotColor === 'function') ? (getDotColor(dotData) || '#666') : '#666';
+        // AIS 狀態文字顏色：直接根據 status 判斷，不依賴圖標顏色
+        const statusTextColor = (function(s){
+            switch(String(s)) {
+                case 'AIS': return '#059669';      // 綠色：已開啟
+                case 'No AIS': return '#ef4444';   // 紅色：未開啟
+                case 'unknown': return '#6b7280';  // 灰色：狀態未知
+                default: return '#6b7280';         // 灰色：監測中
+            }
+        })(rawStatus);
+
+        // prefer helper; if helper missing, fallback to display->legacy color->default
+        const resolvedColor = (typeof getDotColor === 'function') ? (getDotColor(dotData) || '#666') : '#666';
         const rfId = tp.rfId || dotData.rfId || '';
+
+        // 檢查此 RF 信號是否出現在船舶追蹤事件中
+        let vesselEventInfo = null;
+        if (rfId && window.eventStorage) {
+            // 獲取所有事件
+            const allEvents = window.eventStorage.getAllEvents ? window.eventStorage.getAllEvents() : [];
+            // 查找包含此 rfId 的船舶事件
+            const vesselEvents = allEvents.filter(event => 
+                event.type === 'vessel' && event.rfId === rfId
+            );
+            
+            if (vesselEvents.length > 0) {
+                // 使用最新的船舶事件
+                vesselEventInfo = vesselEvents[vesselEvents.length - 1];
+            }
+        }
+
+        // 構建船舶追蹤資訊區塊
+        let vesselTrackingSection = '';
+        if (vesselEventInfo) {
+            const vesselStatus = vesselEventInfo.status === 'investigating' ? '調查中' : 
+                                vesselEventInfo.status === 'completed' ? '已結束' : '監控中';
+            const statusColor = vesselEventInfo.status === 'investigating' ? '#f59e0b' : 
+                               vesselEventInfo.status === 'completed' ? '#6b7280' : '#3b82f6';
+            
+            vesselTrackingSection = `
+                <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); padding: 8px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3b82f6;">
+                    <div style="font-size: 10px; color: #1e40af; margin-bottom: 4px; font-weight: bold;">📡 已列入船舶追蹤</div>
+                    <div style="font-size: 11px; color: #1e3a8a;">
+                        <strong>事件編號:</strong> ${vesselEventInfo.id.toUpperCase()}<br>
+                        <strong>MMSI:</strong> ${vesselEventInfo.mmsi || '未知'}<br>
+                        <strong>威脅指數:</strong> <span style="color: #dc2626; font-weight: bold;">${vesselEventInfo.threatScore || 'N/A'}</span><br>
+                        <strong>狀態:</strong> <span style="color: ${statusColor}; font-weight: bold;">${vesselStatus}</span>
+                    </div>
+                </div>
+            `;
+        }
 
         return `
             <div style="color: #333; font-size: 12px; min-width: 220px;">
                 <div style="margin-bottom: 12px;">
                     <strong>座標:</strong> ${latStr}, ${lonStr}<br>
-                    <strong>AIS狀態:</strong> <span style="color: ${resolvedColor === 'none' ? '#66e7ff' : resolvedColor};">${statusText}</span><br>
+                    <strong>AIS狀態:</strong> <span style="color: ${statusTextColor};">${statusText}</span><br>
                 </div>
                 <div style="background: linear-gradient(135deg, #fef3c7, #fed7aa); padding: 8px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #f59e0b;">
                     <div style="text-align: center;">
@@ -45,8 +92,9 @@
                         </div>
                     </div>
                 </div>
+                ${vesselTrackingSection}
                 <div style="margin-top: 10px;">
-                    <button onclick="createRFEventfromArea('${dotData.rfId}', '${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; margin: 2px; border-radius: 4px; cursor: pointer; font-size: 10px; width: 100%; margin-bottom: 4px;">建立RF監控事件</button>
+                    <button class="create-vessel-btn" onclick="createVesselEventFromRFSignal('${dotData.rfId}', '${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E')" style="background: #135edfff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; margin-bottom: 4px; transition: all 0.3s ease;">建立船舶追蹤事件</button>
                 </div>
             </div>
         `;

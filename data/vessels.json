@@ -1,0 +1,289 @@
+{
+  "limit": 30,
+  "since": null,
+  "total": 3,
+  "entries": [
+    {
+      "dataset": "public-global-vessel-identity:v3.0",
+      "registryInfoTotalRecords": 1,
+      "registryInfo": [
+        {
+          "id": "2fe201929b45d2577ba92b8464cc415b",
+          "sourceCode": [
+            "IMO",
+            "NPFC",
+            "SPRFMO",
+            "TMT_OTHER"
+          ],
+          "ssvid": "412440692",
+          "flag": "CHN",
+          "shipname": "FUYUANYU7889",
+          "nShipname": "FUYUANYU7889",
+          "callsign": "BZUW2",
+          "imo": "9872573",
+          "latestVesselInfo": true,
+          "transmissionDateFrom": "2018-12-16T06:35:19Z",
+          "transmissionDateTo": "2025-08-31T22:18:30Z",
+          "geartypes": [
+            "OTHER_FISHING",
+            "POLE_AND_LINE"
+          ],
+          "lengthM": 67.7,
+          "tonnageGt": 1507,
+          "vesselInfoReference": "f666c373660890d235999e159bbd7486",
+          "extraFields": [
+            {
+              "registrySource": "TMT",
+              "iuuStatus": {
+                "value": null,
+                "dateFrom": null,
+                "dateFromMask": null,
+                "dateTo": null,
+                "dateToMask": null
+              },
+              "hasComplianceInfo": null,
+              "images": [],
+              "operator": null,
+              "builtYear": {
+                "value": 2018,
+                "dateFrom": null,
+                "dateFromMask": null,
+                "dateTo": null,
+                "dateToMask": null
+              },
+              "depthM": {
+                "value": 7,
+                "dateFrom": null,
+                "dateFromMask": null,
+                "dateTo": null,
+                "dateToMask": null
+              }
+            }
+          ]
+        }
+      ],
+      "registryOwners": [],
+      "combinedSourcesInfo": [
+        {
+          "vesselId": "6b2dac49a-a277-dbca-e09e-0958622cb46c",
+          "geartypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2018,
+              "yearTo": 2024
+            }
+          ],
+          "shiptypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2018,
+              "yearTo": 2024
+            }
+          ]
+        },
+        {
+          "vesselId": "f67444c34-447a-d876-ff91-9f8d18b7902d",
+          "geartypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2019,
+              "yearTo": 2023
+            }
+          ],
+          "shiptypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2019,
+              "yearTo": 2023
+            }
+          ]
+        },
+        {
+          "vesselId": "3372867e6-62c8-ad7c-5d1e-64397b05ef38",
+          "geartypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2022,
+              "yearTo": 2025
+            }
+          ],
+          "shiptypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2022,
+              "yearTo": 2025
+            }
+          ]
+        }
+      ],
+      "selfReportedInfo": [
+        {
+          "id": "3372867e6-62c8-ad7c-5d1e-64397b05ef38",
+          "ssvid": "412440692",
+          "shipname": "FU YUAN YU 7889",
+          "nShipname": "FUYUANYU7889",
+          "flag": "CHN",
+          "callsign": "BZUW2",
+          "imo": "9872573",
+          "messagesCounter": 943491,
+          "positionsCounter": 488777,
+          "sourceCode": [
+            "AIS"
+          ],
+          "matchFields": "SEVERAL_FIELDS",
+          "transmissionDateFrom": "2022-12-06T09:06:18Z",
+          "transmissionDateTo": "2025-10-04T23:54:22Z"
+        },
+        {
+          "id": "6b2dac49a-a277-dbca-e09e-0958622cb46c",
+          "ssvid": "412440692",
+          "shipname": "FU YUAN YU 7889",
+          "nShipname": "FUYUANYU7889",
+          "flag": "CHN",
+          "callsign": "BZUW2",
+          "imo": null,
+          "messagesCounter": 526551,
+          "positionsCounter": 291673,
+          "sourceCode": [
+            "AIS"
+          ],
+          "matchFields": "SEVERAL_FIELDS",
+          "transmissionDateFrom": "2018-12-16T03:45:50Z",
+          "transmissionDateTo": "2024-06-10T16:12:04Z"
+        },
+        {
+          "id": "f67444c34-447a-d876-ff91-9f8d18b7902d",
+          "ssvid": "412440692",
+          "shipname": null,
+          "nShipname": null,
+          "flag": "CHN",
+          "callsign": "BZUW2",
+          "imo": null,
+          "messagesCounter": 40,
+          "positionsCounter": 33,
+          "sourceCode": [
+            "AIS"
+          ],
+          "matchFields": "SEVERAL_FIELDS",
+          "transmissionDateFrom": "2019-05-27T04:21:54Z",
+          "transmissionDateTo": "2023-12-28T10:12:41Z"
+        }
+      ]
+    },
+    {
+      "dataset": "public-global-vessel-identity:v3.0",
+      "registryInfoTotalRecords": 0,
+      "registryInfo": [],
+      "registryOwners": [],
+      "combinedSourcesInfo": [
+        {
+          "vesselId": "72d3b46ba-adf7-69a7-7546-e2cf8780e838",
+          "geartypes": [
+            {
+              "name": "OTHER",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2015,
+              "yearTo": 2017
+            },
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2018,
+              "yearTo": 2024
+            }
+          ],
+          "shiptypes": [
+            {
+              "name": "OTHER",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2015,
+              "yearTo": 2017
+            },
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2018,
+              "yearTo": 2024
+            }
+          ]
+        }
+      ],
+      "selfReportedInfo": [
+        {
+          "id": "72d3b46ba-adf7-69a7-7546-e2cf8780e838",
+          "ssvid": "412440692",
+          "shipname": null,
+          "nShipname": null,
+          "flag": "CHN",
+          "callsign": null,
+          "imo": null,
+          "messagesCounter": 97,
+          "positionsCounter": 97,
+          "sourceCode": [
+            "AIS"
+          ],
+          "matchFields": "NO_MATCH",
+          "transmissionDateFrom": "2015-05-15T09:18:26Z",
+          "transmissionDateTo": "2024-07-27T14:15:41Z"
+        }
+      ]
+    },
+    {
+      "dataset": "public-global-vessel-identity:v3.0",
+      "registryInfoTotalRecords": 0,
+      "registryInfo": [],
+      "registryOwners": [],
+      "combinedSourcesInfo": [
+        {
+          "vesselId": "3872b2328-8b78-84eb-7d2e-c069da11a5bd",
+          "geartypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2018,
+              "yearTo": 2020
+            }
+          ],
+          "shiptypes": [
+            {
+              "name": "FISHING",
+              "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+              "yearFrom": 2018,
+              "yearTo": 2020
+            }
+          ]
+        }
+      ],
+      "selfReportedInfo": [
+        {
+          "id": "3872b2328-8b78-84eb-7d2e-c069da11a5bd",
+          "ssvid": "412440692",
+          "shipname": "FU YUAN YU 7889",
+          "nShipname": "FUYUANYU7889",
+          "flag": "CHN",
+          "callsign": null,
+          "imo": null,
+          "messagesCounter": 63,
+          "positionsCounter": 37,
+          "sourceCode": [
+            "AIS"
+          ],
+          "matchFields": "NO_MATCH",
+          "transmissionDateFrom": "2018-10-30T01:06:31Z",
+          "transmissionDateTo": "2020-09-28T06:10:44Z"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "query": "412440692",
+    "normalizedQuery": "412440692",
+    "didYouMean": {}
+  }
+}

@@ -33,7 +33,9 @@
                             <span class="event-type-badge type-area">區域監控</span>
                         </div>
                         <div class="event-info">
-                            監控區域：台灣北部海域<br>
+                            監控區域：南海海域<br>
+                            中心座標：14.300°N, 114.000°E<br>
+                            監控範圍：半徑 200 海里<br>
                             監控時間: 讀取中<br>
                         </div>
                         <div class="event-status">
@@ -42,7 +44,7 @@
                         </div>
                     </div>
 
-                    <div class="event-card" onclick="selectEvent(this, 'rf-002')">
+                    <!-- <div class="event-card" onclick="selectEvent(this, 'rf-002')">
                         <div class="event-card-header">
                             <span class="event-id">RF-002</span>
                             <span class="event-type-badge type-rf">RF 監控</span>
@@ -55,15 +57,15 @@
                             <div class="status-dot status-analyzed"></div>
                             <span>已獲取RF資訊</span>
                         </div>
-                    </div>
+                    </div> -->
 
                     <div class="event-card" onclick="selectEvent(this, 'vessel-003')">
                         <div class="event-card-header">
                             <span class="event-id">VESSEL-003</span>
-                            <span class="event-type-badge type-vessel">船舶監控</span>
+                            <span class="event-type-badge type-vessel">船舶追蹤</span>
                         </div>
                         <div class="event-info">
-                            風險分數: 讀取中<br>
+                            威脅指數: 讀取中<br>
                             座標: 讀取中<br>
                             AIS 狀態: 讀取中
                         </div>
@@ -76,10 +78,10 @@
                     <div class="event-card" onclick="selectEvent(this, 'vessel-004')">
                         <div class="event-card-header">
                             <span class="event-id">VESSEL-004</span>
-                            <span class="event-type-badge type-vessel">船舶監控</span>
+                            <span class="event-type-badge type-vessel">船舶追蹤</span>
                         </div>
                         <div class="event-info">
-                            風險分數: 讀取中<br>
+                            威脅指數: 讀取中<br>
                             座標: 讀取中<br>
                             AIS 狀態: 讀取中
                         </div>
@@ -191,8 +193,7 @@
                         </div>
                     </div> 
                     </div>
-                </div>  
-                
+                </div>                  
 
                 <!-- 右側：時間軸 -->
                 <div class="mission-right">
@@ -249,11 +250,11 @@
                             <div class="type-title">區域監控事件</div>
                         </div>
                         <div class="type-description">
-                            輸入座標範圍進行區域性異常RF信號偵測，系統將回傳異常列表供後續調查。
+                            輸入中心座標與監控半徑進行圓形區域異常RF信號偵測，系統將回傳異常列表供後續調查。
                         </div>
                     </div>
                     
-                    <div class="type-option" data-type="rf" onclick="selectEventType('rf')">
+                    <!-- <div class="type-option" data-type="rf" onclick="selectEventType('rf')">
                         <div class="type-option-header">
                             <div class="type-icon">📡</div>
                             <div class="type-title">RF 監控事件</div>
@@ -261,12 +262,12 @@
                         <div class="type-description">
                             輸入特定RF信號ID，系統將提供信號詳細資料與船舶資訊以供後續調查。
                         </div>
-                    </div>
+                    </div> -->
                     
                     <div class="type-option" data-type="vessel" onclick="selectEventType('vessel')">
                         <div class="type-option-header">
                             <div class="type-icon">🚢</div>
-                            <div class="type-title">船舶監控事件</div>
+                            <div class="type-title">船舶追蹤事件</div>
                         </div>
                         <div class="type-description">
                             輸入船舶 MMSI，系統將提供風險分析、決策建議以及行動選項。
@@ -281,45 +282,37 @@
                         <input type="text" class="form-input" placeholder="例：南海海域" id="aoiName">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">緯度範圍</label>
+                        <label class="form-label">中心座標</label>
                         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
                             <div style="display: flex; gap: 4px; align-items: center; flex: 1;">
-                                <input type="number" step="0.001" class="form-input" placeholder="10.3" id="latMin" style="flex: 1;">
-                                <select class="form-input" id="latMinDirection" style="width: 50px;">
+                                <label style="color: #64748b; font-size: 12px; min-width: 30px;">緯度</label>
+                                <input type="number" step="0.001" class="form-input" placeholder="23.5" id="centerLat" style="flex: 1;">
+                                <select class="form-input" id="centerLatDirection" style="width: 50px;">
                                     <option value="N">N</option>
                                     <option value="S">S</option>
                                 </select>
                             </div>
-                            <span style="color: #64748b; font-weight: 500;">~</span>
                             <div style="display: flex; gap: 4px; align-items: center; flex: 1;">
-                                <input type="number" step="0.001" class="form-input" placeholder="18.3" id="latMax" style="flex: 1;">
-                                <select class="form-input" id="latMaxDirection" style="width: 50px;">
-                                    <option value="N">N</option>
-                                    <option value="S">S</option>
+                                <label style="color: #64748b; font-size: 12px; min-width: 30px;">經度</label>
+                                <input type="number" step="0.001" class="form-input" placeholder="121.0" id="centerLon" style="flex: 1;">
+                                <select class="form-input" id="centerLonDirection" style="width: 50px;">
+                                    <option value="E">E</option>
+                                    <option value="W">W</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">經度範圍</label>
-                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                            <div style="display: flex; gap: 4px; align-items: center; flex: 1;">
-                                <input type="number" step="0.001" class="form-input" placeholder="109.8" id="lonMin" style="flex: 1;">
-                                <select class="form-input" id="lonMinDirection" style="width: 50px;">
-                                    <option value="E">E</option>
-                                    <option value="W">W</option>
-                                </select>
-                            </div>
-                            <span style="color: #64748b; font-weight: 500;">~</span>
-                            <div style="display: flex; gap: 4px; align-items: center; flex: 1;">
-                                <input type="number" step="0.001" class="form-input" placeholder="118.2" id="lonMax" style="flex: 1;">
-                                <select class="form-input" id="lonMaxDirection" style="width: 50px;">
-                                    <option value="E">E</option>
-                                    <option value="W">W</option>
-                                </select>
-                            </div>
+                        <label class="form-label">監控半徑</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" step="0.1" class="form-input" placeholder="50" id="radius" min="0.1" max="1000" style="flex: 1;">
+                            <select class="form-input" id="radiusUnit" style="width: 80px;">
+                                <option value="km">公里</option>
+                                <option value="nm">海里</option>
+                            </select>
                         </div>
-                            </div>
+                        <small style="color: #b8c5d1; font-size: 11px; margin-top: 4px;">設定以中心座標為圓心的監控範圍</small>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">監控時間</label>
                         <input type="number" class="form-input" placeholder="24" id="monitorHours" min="1" max="168"> 
@@ -328,7 +321,7 @@
                 </div>
                 
                 <!-- RF 信號表單 -->
-                <div class="form-section" id="rfForm">
+                <!-- <div class="form-section" id="rfForm">
                     <div class="form-group">
                         <label class="form-label">RF 信號 ID</label>
                         <input type="text" class="form-input" placeholder="例：SIG-4A7B2C" id="rfId">
@@ -337,9 +330,9 @@
                         <label class="form-label">備註</label>
                         <textarea class="form-textarea" placeholder="補充說明或相關資訊..." id="rfNotes"></textarea>
                     </div>
-                </div>
+                </div> -->
                 
-                <!-- 船舶監控表單 -->
+                <!-- 船舶追蹤表單 -->
                 <div class="form-section" id="vesselForm">
                     <div class="form-group">
                         <label class="form-label">MMSI</label>
@@ -366,13 +359,20 @@
             </div>
         </div>
 
-    <!-- JavaScript -->
-    <script src="ui/popups.js"></script>
-    <script src="map/icons.js"></script>
-    <script src="map/SeaDotManager.js"></script>
-    <script src="threat_assessment.js"></script>
-    <script src="data/simulatedTracks.js"></script>
-    <script src="data/eventStorage.js"></script>
-    <script src="script.js"></script>
+        <!-- JavaScript -->
+        <script src="utils/safePointHelpers.js"></script>
+        <script src="ui/popups.js"></script>
+        <script src="ui/threat_assessment.js"></script>
+        <script src="map/icons.js"></script>
+        <script src="map/SeaDotManager.js"></script>
+        <script src="map/HistoryTrackManager.js"></script>
+        <script src="map/MissionTrackPointManager.js"></script>
+        <script src="data/eventTypes/areaEvents.js"></script>
+        <script src="data/eventTypes/rfEvents.js"></script>
+        <script src="data/eventTypes/vesselEvents.js"></script>
+        <script src="data/eventStorage.js"></script>
+        <script src="utils/vesselDataGenerator.js"></script>
+        <script src="utils/threatAlertManager.js"></script>
+        <script src="script.js"></script>
     </body>
 </html>
