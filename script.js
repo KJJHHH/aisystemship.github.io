@@ -548,12 +548,25 @@ function selectEvent(element, eventId) {
     // 根據事件類型調整地圖視圖（如果是重複點擊，傳遞標記）
     adjustMapViewForEvent(eventId, isRepeatedClick);
 
-    // 如果是船舶事件，切換到船舶追蹤模式並顯示時間軸
+    // 根據事件類型控制底部面板和時間軸
     const storedEvent = eventStorage.getEvent(eventId);
+    const missionSection = document.querySelector('.mission-section');
+    const systemLayout = document.querySelector('.system-layout');
+
     if (storedEvent && storedEvent.type === 'vessel') {
+        // 船舶事件：顯示底部面板和時間軸
+        if (missionSection) missionSection.classList.remove('hidden');
+        if (systemLayout) systemLayout.classList.remove('hide-bottom');
         switchToTrackingMode(eventId);
+    } else if (storedEvent && storedEvent.type === 'area') {
+        // 區域監控事件：隱藏整個底部面板
+        if (missionSection) missionSection.classList.add('hidden');
+        if (systemLayout) systemLayout.classList.add('hide-bottom');
+        switchToGlobalMode();
     } else {
-        // 如果是其他類型事件，恢復全局模式（清空時間軸）
+        // 其他類型事件：顯示底部面板但清空時間軸
+        if (missionSection) missionSection.classList.remove('hidden');
+        if (systemLayout) systemLayout.classList.remove('hide-bottom');
         switchToGlobalMode();
     }
 }
