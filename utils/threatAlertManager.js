@@ -81,7 +81,7 @@
         window.eventCounter = 4; // 從 vessel-005 開始
       }
 
-      const eventId = `vessel-${String(++window.eventCounter).padStart(3, '0')}`;
+      const eventId = `VESSEL-${String(++window.eventCounter).padStart(3, '0')}`;
 
       const eventData = {
         type: 'vessel',
@@ -92,7 +92,6 @@
         aisStatus: vesselData.aisStatus,
         createTime: new Date().toLocaleTimeString('zh-TW', {hour12: false, hour: '2-digit', minute: '2-digit'}),
         status: 'investigating',
-        investigationReason: vesselData.investigationReason,
         isAlertActive: true,
         alertViewed: false,
         trackPoints: this.generateSimulatedTrackPoints(vesselData)

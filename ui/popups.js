@@ -1,13 +1,12 @@
 // UIUX/ui/popups.js
 (function () {
-    function createPopupContent(dotData) {
+    function createRFSignalPopupContent(dotData) {
         // Use canonical-safe helpers if available
         const helpers = (window.safePointHelpers || {});
         const getTrackPointData = helpers.getTrackPointData || (p => p || {});
         const getDisplay = helpers.getDisplay || (p => (p && p.display) || {});
     // prefer canonical helper; fallback prefers display.* then legacy color field
     const getDotColor = helpers.getDotColor || (p => (getDisplay(p) && getDisplay(p).dotColor) || (p && p.color) || null);
-    const getBackgroundColor = helpers.getBackgroundColor || (p => (getDisplay(p) && getDisplay(p).backgroundColor) || (p && p.backgroundColor) || (p && p.bgColor) || null);
 
         const tp = getTrackPointData(dotData) || {};
         const disp = getDisplay(dotData) || {};
@@ -39,7 +38,14 @@
 
         // prefer helper; if helper missing, fallback to display->legacy color->default
         const resolvedColor = (typeof getDotColor === 'function') ? (getDotColor(dotData) || '#666') : '#666';
-        const rfId = tp.rfId || dotData.rfId || '';
+        
+        // 優先使用 dotData.rfId（這是最可靠的來源），其次是 tp.rfId
+        const rfId = dotData.rfId || tp.rfId || '';
+        
+        // 如果沒有 rfId，記錄警告
+        if (!rfId) {
+            console.warn('⚠️ Popup 中的 dotData 沒有 rfId:', dotData);
+        }
 
         // 檢查此 RF 信號是否出現在船舶追蹤事件中
         let vesselEventInfo = null;
@@ -71,7 +77,7 @@
                     <div style="font-size: 11px; color: #1e3a8a;">
                         <strong>事件編號:</strong> ${vesselEventInfo.id.toUpperCase()}<br>
                         <strong>MMSI:</strong> ${vesselEventInfo.mmsi || '未知'}<br>
-                        <strong>威脅指數:</strong> <span style="color: #dc2626; font-weight: bold;">${vesselEventInfo.threatScore || 'N/A'}</span><br>
+                        <strong>威脅分數:</strong> <span style="color: #dc2626; font-weight: bold;">${vesselEventInfo.threatScore || 'N/A'}</span><br>
                         <strong>狀態:</strong> <span style="color: ${statusColor}; font-weight: bold;">${vesselStatus}</span>
                     </div>
                 </div>
@@ -94,14 +100,14 @@
                 </div>
                 ${vesselTrackingSection}
                 <div style="margin-top: 10px;">
-                    <button class="create-vessel-btn" onclick="createVesselEventFromRFSignal('${dotData.rfId}', '${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E')" style="background: #135edfff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; margin-bottom: 4px; transition: all 0.3s ease;">建立船舶追蹤事件</button>
+                    <button class="create-vessel-btn" onclick="createVesselEventFromRFSignal('${rfId}', '${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E')" style="background: #135edfff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; margin-bottom: 4px; transition: all 0.3s ease;">建立船舶追蹤事件</button>
                 </div>
             </div>
         `;
     }
 
-    function updatePopupContent(marker, dotData) {
-        const content = createPopupContent(dotData);
+    function updateRFSignalPopupContent(marker, dotData) {
+        const content = createRFSignalPopupContent(dotData);
         if (marker.getPopup()) {
             marker.setPopupContent(content);
         } else {
@@ -204,7 +210,7 @@
     }
 
     window.popups = window.popups || {};
-    window.popups.createPopupContent = createPopupContent;
+    window.popups.createRFSignalPopupContent = createRFSignalPopupContent;
     window.popups.createTrackPointPopupContent = createTrackPointPopupContent;
-    window.popups.updatePopupContent = updatePopupContent;
+    window.popups.updateRFSignalPopupContent = updateRFSignalPopupContent;
 })();

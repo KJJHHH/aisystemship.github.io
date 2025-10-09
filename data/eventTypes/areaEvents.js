@@ -92,13 +92,13 @@
                         suspiciousVessel
                     };
                 })
-                // 按照威脅指數由大到小排序
+                // 按照威脅分數由大到小排序
                 .sort((a, b) => {
                     const threatScoreA = a.suspiciousVessel?.threatScore || 0;
                     const threatScoreB = b.suspiciousVessel?.threatScore || 0;
                     return threatScoreB - threatScoreA;
                 })
-                // 只顯示威脅指數最高的前三個可疑船隻
+                // 只顯示威脅分數最高的前三個可疑船隻
                 .slice(0, 3)
                 .map(({ candidateData, suspiciousVessel }) => {
                 
@@ -136,7 +136,7 @@
                                 font-size: 11px;
                                 font-weight: bold;
                             ">
-                                威脅指數: ${suspiciousVessel.threatScore}
+                                威脅分數: ${suspiciousVessel.threatScore}
                             </span>
                         </div>
                         <div style="
@@ -189,14 +189,41 @@
             <!-- <div class="action-section">
                 <div class="section-title">⚡ 可用操作</div>
                 <div class="action-grid">
-                    <div class="action-btn" onclick="refreshAOI()">🔄<br>重新掃描</div>
-                    <div class="action-btn" onclick="expandAOI()">📏<br>擴大 AOI</div>
-                    <div class="action-btn" onclick="exportData()">📊<br>匯出資料</div>
-                    <div class="action-btn" onclick="closeEvent()">✅<br>結束事件</div>
+                    <div class="action-btn" onclick="AreaEventManager.refreshAOI()">🔄<br>重新掃描</div>
+                    <div class="action-btn" onclick="AreaEventManager.expandAOI()">📏<br>擴大 AOI</div>
+                    <div class="action-btn" onclick="AreaEventManager.exportData()">📊<br>匯出資料</div>
+                    <div class="action-btn" onclick="AreaEventManager.closeEvent()">✅<br>結束事件</div>
                 </div>
             </div> -->
         `;
     }
+
+    // 其他操作函數 （onclick）
+    static refreshAOI() {
+        alert('🔄 重新掃描 AOI 區域...\n正在更新 RF 異常候選清單');
+    }
+
+    static expandAOI() {
+        alert('📏 擴大 AOI 範圍...\n監控區域已增加 20%');
+    }
+
+    static exportData() {
+        alert('📊 匯出資料...\n事件資料已匯出為 CSV 檔案');
+    }
+
+    static closeEvent() {
+    if (confirm('確定要結束此事件嗎？\n結束後事件將移至歷史資料庫')) {
+        const activeCard = document.querySelector('.event-card.active');
+        if (activeCard) {
+            const statusDot = activeCard.querySelector('.status-dot');
+            const statusText = activeCard.querySelector('.event-status span');
+            statusDot.className = 'status-dot status-completed';
+            statusText.textContent = '已結束';
+
+            alert('✅ 事件已結束並封存至歷史資料庫');
+        }
+    }
+}
 
     /**
      * 取得無 AIS 的 RF 信號資料 - 使用 SeaDotManager 整合
@@ -456,7 +483,7 @@
                         type: ['貨船', '漁船',][Math.floor(Math.random() * 2)],
                         lat: rfLat + (Math.random() - 0.5) * 0.01, // 在RF信號附近隨機生成
                         lon: rfLon + (Math.random() - 0.5) * 0.01,
-                        threatScore: Math.floor(Math.random() * 60) + 31, // 40-90的高威脅指數
+                        threatScore: Math.floor(Math.random() * 60) + 31, // 40-90的高威脅分數
                         aisStatus: 'AIS關閉'
                     }
                 ];
@@ -530,21 +557,6 @@
                 Math.sin(dLon/2) * Math.sin(dLon/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return R * c;
-    }
-
-    /**
-     * 從區域監控建立 RF 事件（從 AreaEventDetails 提取數據）
-     * @param {string} rfId - RF ID
-     * @param {string|null} customCoordinates - 自定義座標（可選）
-     */
-    static createRFEventfromArea(rfId, customCoordinates = null) {
-        // 注意：此函數需要訪問全域變數和函數，所以保留為橋接函數
-        // 實際實現會在主檔案中調用此類的靜態方法
-        if (typeof window.createRFEventfromArea === 'function') {
-            window.createRFEventfromArea(rfId, customCoordinates);
-        } else {
-            console.error('createRFEventfromArea function not available');
-        }
     }
 }
 

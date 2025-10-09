@@ -11,14 +11,13 @@
      * @returns {string} HTML 字串表示的事件詳情
      */
     static getVesselEventDetailsFromStorage(eventData) {
-        // AIS 狀態映射機制：將英文狀態轉換為中文顯示
+        // AIS 狀態映射機制：統一所有可能的狀態值格式
         let displayAisStatus = eventData.aisStatus;
         
-        if (eventData.aisStatus === 'AIS') {
-            displayAisStatus = '已開啟';
-        } else if (eventData.aisStatus === 'No AIS') {
-            displayAisStatus = '未開啟';
-        } else if (!eventData.aisStatus) {
+        // 記錄原始狀態以便除錯
+        console.log(`🔍 [事件詳情] 原始 AIS 狀態: "${eventData.aisStatus}" (類型: ${typeof eventData.aisStatus})`);
+        
+        if (!eventData.aisStatus) {
             // 如果完全沒有AIS狀態，隨機生成
             const aisStates = ['已開啟', '未開啟'];
             displayAisStatus = aisStates[Math.floor(Math.random() * aisStates.length)];
@@ -30,8 +29,21 @@
             
             console.log(`🚢 為事件 ${eventData.id || '船舶事件'} 隨機生成AIS狀態: ${displayAisStatus}`);
         } else {
-            // 如果是其他狀態（如 'unknown'），保持原樣
-            console.log(`📡 事件 ${eventData.id || '船舶事件'} AIS狀態: ${displayAisStatus}`);
+            // 標準化狀態值（不區分大小寫）
+            const normalizedStatus = String(eventData.aisStatus).toLowerCase().trim();
+            
+            if (normalizedStatus === 'ais' || normalizedStatus === '已開啟') {
+                displayAisStatus = '已開啟';
+            } else if (normalizedStatus === 'no ais' || normalizedStatus === '未開啟') {
+                displayAisStatus = '未開啟';
+            } else if (normalizedStatus === 'unknown' || normalizedStatus === '未知') {
+                displayAisStatus = '未知';
+            } else {
+                // 對於其他未預期的狀態，記錄警告並保持原值
+                console.warn(`⚠️ 未預期的 AIS 狀態值: "${eventData.aisStatus}"，保持原值`);
+            }
+            
+            console.log(`📡 事件 ${eventData.id || '船舶事件'} AIS 狀態: "${eventData.aisStatus}" → "${displayAisStatus}"`);
         }
         
         // 更新 eventData 以使用映射後的狀態
@@ -65,7 +77,6 @@
                             ${eventData.aisStatus}
                         </span><br>
                         <strong>建立時間：</strong>${eventData.createTime}<br>
-                        ${eventData.investigationReason ? `<strong>監控原因：</strong>${eventData.investigationReason}<br>` : ''}
                     </div>
                 </div>
 
@@ -100,8 +111,8 @@
         console.log(`⚠️ 事件 ${eventData.id} AIS 未開啟或異常，使用完整顯示模式`);
         
         const threatScore = eventData.threatScore || 0;
-        const riskColor = threatScore >= 70 ? '#ef4444' : threatScore >= 40 ? '#f59e0b' : '#10b981';
-        const riskLevel = threatScore >= 70 ? '高風險' : threatScore >= 40 ? '中風險' : '低風險';
+        const riskColor = threatScore >= 80 ? '#ef4444' : threatScore >= 60 ? '#f59e0b' : '#10b981';
+        const riskLevel = threatScore >= 80 ? '高風險' : threatScore >= 60 ? '中風險' : '低風險';
         const isCompleted = eventData.status === 'completed';
                     
         let actionSection = '';
@@ -194,7 +205,6 @@
                         ${eventData.aisStatus || '未知'}
                     </span><br>
                     <strong>建立時間：</strong>${eventData.createTime}<br>
-                    ${eventData.investigationReason ? `<strong>監控原因：</strong>${eventData.investigationReason}<br>` : ''}
                 </div>
             </div>
 
@@ -214,7 +224,7 @@
             </div>
 
             <div class="risk-assessment-section">
-                <div class="section-title">風險評估</div>
+                <div class="section-title">威脅分數</div>
                 <div class="risk-score-container">
                     <div class="risk-score" style="color: ${riskColor};">${threatScore}</div>
                     <div class="risk-level" style="color: ${riskColor};">${riskLevel}</div>
@@ -246,14 +256,14 @@
 
     /**
      * 生成船舶追蹤決策建議
-     * @param {number} threatScore - 威脅指數
+     * @param {number} threatScore - 威脅分數
      * @param {Object} eventData - 事件資料物件
      * @returns {Object} 決策建議物件
      */
     static generateVesselDecisionRecommendation(threatScore, eventData) {
         let recommendation = {};
         
-        // 根據威脅指數決定主要建議行動
+        // 根據威脅分數決定主要建議行動
         if (threatScore >= 75) {
             recommendation = {
                 primaryAction: '立即派遣載具調查',

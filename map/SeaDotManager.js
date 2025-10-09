@@ -328,9 +328,9 @@
             const dotIcon = this.createSeaDotIcon(dotData, sizes, shadowColor, borderStyle);
             const marker = L.marker([dotData.lat, dotData.lon], { icon: dotIcon, interactive: true, riseOnHover: true, riseOffset: 250 });
 
-            if (window.popups && window.popups.createPopupContent) {
+            if (window.popups && window.popups.createRFSignalPopupContent) {
                 try {
-                    const content = window.popups.createPopupContent(dotData);
+                    const content = window.popups.createRFSignalPopupContent(dotData);
                     marker.bindPopup(content, { offset: [0, -10], closeButton: true, autoClose: false, closeOnEscapeKey: true, maxWidth: 280 });
                 } catch (err) {
                     console.error('Failed to generate popup content from window.popups:', err);
@@ -343,47 +343,16 @@
                 console.log('SeaDot clicked:', dotData.rfId);
                 L.DomEvent.stopPropagation(e);
                 L.DomEvent.stop(e);
-                if (window.popups && window.popups.updatePopupContent) {
-                    try { window.popups.updatePopupContent(marker, dotData); } catch (err) { console.error('popups.updatePopupContent failed:', err); }
+                if (window.popups && window.popups.updateRFSignalPopupContent) {
+                    try { window.popups.updateRFSignalPopupContent(marker, dotData); } catch (err) { console.error('popups.updateRFSignalPopupContent failed:', err); }
                 } else {
-                    console.warn('window.popups.updatePopupContent not available - cannot update/open popup.');
+                    console.warn('window.popups.updateRFSignalPopupContent not available - cannot update/open popup.');
                 }
                 console.log('Popup should be open now');
             });
 
             marker.on('mouseover', function(e) { console.log('SeaDot mouseover:', dotData.rfId); });
             return marker;
-        }
-
-        changedotColor(dotId, newdotColor) {
-            const dotData = this.seaDots.get(dotId);
-            if (!dotData) { console.warn(`找不到監測點 ${dotId}`); return false; }
-            dotData.dotColor = newdotColor;
-            dotData.status = this.getStatusFromColor(newdotColor);
-            if (dotData.marker && taiwanMap.hasLayer(dotData.marker)) { taiwanMap.removeLayer(dotData.marker); }
-            const newMarker = this.createMarker(dotData);
-            dotData.marker = newMarker;
-            newMarker.addTo(taiwanMap);
-            console.log(`✅ 監測點 ${dotId} 外框顏色已更改為 ${newdotColor}`);
-            return true;
-        }
-
-        changedotColorBatch(dotIds, newdotColor) {
-            let successCount = 0;
-            dotIds.forEach(dotId => { if (this.changedotColor(dotId, newdotColor)) successCount++; });
-            console.log(`✅ 批量更改完成: ${successCount}/${dotIds.length} 個監測點`);
-            return successCount;
-        }
-
-        getStatusFromColor(color) {
-            switch (color) {
-                case '#059669': return 'AIS';
-                case '#ef4444': return 'No AIS';
-                case '#1eb0f9ff': return 'normal';  // 新增淺藍色的映射
-                case '#f59e0b': return 'warning';
-                case 'none': return 'unknown';
-                default: return 'unknown';
-            }
         }
 
         updateAllSeaDotSizes(map = taiwanMap) {
@@ -393,29 +362,6 @@
             this.seaDots.forEach((dotData, dotId) => { if (dotData.marker) { this.updateSeaDotMarkerSize(dotData.marker, sizes, dotData); updateCount++; } });
             console.log(`✅ 已更新 ${updateCount} 個 SeaDot 的大小 (縮放等級: ${map.getZoom()})`);
             return updateCount;
-        }
-
-        getStatusText(status) {
-            switch (status) {
-                case 'AIS': return '已開啟';
-                case 'No AIS': return '未開啟';
-                case 'unknown': return '狀態未知';
-                case 'normal': return '正常監測';
-                case 'alert': return '警報狀態';
-                case 'warning': return '警告狀態';
-                default: return '監測中';
-            }
-        }
-
-        getColorName(color) {
-            switch (color) {
-                case '#059669': return '深綠色';
-                case '#ef4444': return '紅色';
-                case '#1eb0f9ff': return '淺藍色';  // 新增淺藍色的名稱
-                case '#f59e0b': return '橙色';
-                case 'none': return '無外框';
-                default: return '未知';
-            }
         }
 
         hexToRgba(hex, alpha) {
@@ -436,15 +382,7 @@
         }
 
         getAllDots() { return Array.from(this.seaDots.values()); }
-        getAllRFIds() { return this.getAllDots().map(dot => dot.rfId); }
         getDotByRFId(rfId) { return this.getAllDots().find(dot => dot.rfId === rfId); }
-        getRFIdsByArea(areaName) { return this.getAllDots().filter(dot => dot.area === areaName).map(dot => dot.rfId); }
-        getDotsBydotColor(dotColor) {
-            const helpers = (typeof window !== 'undefined' && window.safePointHelpers) ? window.safePointHelpers : null;
-            const getDotColor = helpers ? helpers.getDotColor : (p => (p && p.dotColor) || null);
-            return this.getAllDots().filter(dot => getDotColor(dot) === dotColor);
-        }
-        getDotsCount() { return this.seaDots.size; }
         clearAllDots() { this.seaDots.forEach(dotData => { if (dotData.marker && taiwanMap.hasLayer(dotData.marker)) { taiwanMap.removeLayer(dotData.marker); } }); this.seaDots.clear(); this.dotIdCounter = 1; console.log('🗑️ 已清除所有海域監測點'); }
 
         /**
@@ -991,11 +929,22 @@
                 return false;
             }
 
+            console.log(`🔍 [markRFSignalAsTracked] 嘗試標記 RF ID: "${rfId}"`);
+            console.log(`📊 [markRFSignalAsTracked] 當前所有 sea dots 數量: ${this.getAllDots().length}`);
+            
             const dotData = this.getDotByRFId(rfId);
             if (!dotData) {
                 console.warn(`⚠️ 找不到 RF ID "${rfId}" 對應的信號點`);
+                console.log(`🔍 [除錯] 所有可用的 RF IDs:`, this.getAllDots().map(d => d.rfId));
                 return false;
             }
+
+            console.log(`✅ [markRFSignalAsTracked] 找到 dotData:`, {
+                id: dotData.id,
+                rfId: dotData.rfId,
+                isHighlighted: dotData.isHighlighted,
+                dotColor: dotData.dotColor
+            });
 
             // 如果信號點已經被高亮（紅色），則更新為黃色
             if (dotData.isHighlighted) {
@@ -1014,6 +963,8 @@
                     console.log(`🟡 RF 信號 ${rfId} 已標記為正在追蹤（黃色）`);
                     return true;
                 }
+            } else {
+                console.log(`ℹ️ RF 信號 ${rfId} 未被高亮，不需要標記為追蹤`);
             }
 
             return false;
