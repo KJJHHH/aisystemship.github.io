@@ -71,6 +71,61 @@ body {
     box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
 }
 
+/* Tab 切換區 */
+.events-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 15px 0;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+    color: #94a3b8;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+}
+
+.tab-btn.active {
+    background: rgba(33, 150, 243, 0.15);
+    border-color: rgba(33, 150, 243, 0.4);
+    color: #2196F3;
+    box-shadow: 0 -2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.tab-count {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.tab-btn.active .tab-count {
+    background: rgba(33, 150, 243, 0.3);
+    color: #60a5fa;
+}
+
 .events-container {
     flex: 1;
     overflow-y: auto;
@@ -97,6 +152,27 @@ body {
 .event-card.active {
     border-color: #00d4ff;
     background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 153, 204, 0.1));
+}
+
+/* 已結束事件卡片樣式 */
+.event-card.completed {
+    opacity: 0.65;
+    background: linear-gradient(135deg, rgba(100, 116, 139, 0.15), rgba(71, 85, 105, 0.1));
+    border-color: rgba(100, 116, 139, 0.3);
+}
+
+.event-card.completed:hover {
+    opacity: 0.8;
+    border-color: rgba(100, 116, 139, 0.5);
+    box-shadow: 0 4px 15px rgba(100, 116, 139, 0.2);
+}
+
+.event-card.completed .event-info {
+    color: #94a3b8;
+}
+
+.event-card.completed .event-id {
+    color: #94a3b8;
 }
 
 .event-card-header {
@@ -806,6 +882,25 @@ body {
     transform: translateY(-1px);
 }
 
+/* 結束事件按鈕特殊樣式 */
+.action-btn-close {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.action-btn-close:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+}
+
+.action-btn-close.selected {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #10b981;
+    color: white;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
 .action-btn.primary {
     background: linear-gradient(135deg, #ef4444, #dc2626);
     border-color: #ef4444;
@@ -1500,6 +1595,32 @@ body {
     /* 移除會造成位置跳動的 transform */
     /* transform: scale(1.3); */
     z-index: 1001;
+}
+
+/* 船舶 icon 標記 */
+.custom-ship-marker {
+    background: transparent !important;
+    border: none !important;
+    pointer-events: auto !important;
+    z-index: 1002 !important;
+    cursor: pointer;
+}
+
+.ship-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto !important;
+}
+
+.ship-icon-wrapper svg {
+    filter: drop-shadow(0 3px 6px rgba(33, 150, 243, 0.5));
+}
+
+.custom-ship-marker:hover .ship-icon-wrapper {
+    transform: scale(1.1);
 }
 
 .sea-dot-inner {

@@ -10,7 +10,7 @@ let currentEventId = 'area-001'; // 預設選中 area-001 事件
 let previousEventId = null; // 追蹤上一個選中的事件，用於避免重複處理
 let selectedEventType = null;
 let selectedAction = null;
-let eventCounter = 4;
+window.eventCounter = 4;
 let creatingEventIds = new Set(); // 追蹤正在創建中的事件ID
 
 // 时间轴模式管理
@@ -95,7 +95,7 @@ function selectEventType(type) {
 
 // 建立事件(index.html)
 function createNewEvent() {
-    const eventId = `${selectedEventType.toUpperCase()}-${String(++eventCounter).padStart(3, '0')}`;
+    const eventId = `${selectedEventType.toUpperCase()}-${String(++window.eventCounter).padStart(3, '0')}`;
 
     // 建立事件資料結構
     let eventData = {
@@ -513,6 +513,10 @@ function createEventCard(eventId, eventType, eventData, displayInfo) {
         // 模擬完成後，從創建中的集合移除該事件ID並恢復該事件卡功能
         creatingEventIds.delete(eventIdLowerCase);
         setEventCardDisabled(eventIdLowerCase, false);
+
+        // 更新事件計數
+        updateEventCounts();
+        console.log('📊 事件計數已更新');
     }, config.delay);
 
     console.log(`✅ 事件卡 ${eventId} (${eventType}) 已建立完成`);
@@ -612,6 +616,11 @@ function updateDetailsPanel(eventId) {
                     subtitle: `船舶追蹤事件${storedEvent.status === 'completed' ? ' | 已結束' : ''}`,
                     content: VesselEventManager.getVesselEventDetailsFromStorage(storedEvent)
                 };
+                // 顯示船舶歷史軌跡
+                if (window.historyTrackManager && storedEvent.trackPoints) {
+                    console.log(`🔵 [script.js] 呼叫 displayHistoryTrack，事件ID: ${storedEvent.id}`);
+                    window.historyTrackManager.displayHistoryTrack(storedEvent);
+                }
                 break;
         }
     }
@@ -627,7 +636,7 @@ function updateDetailsPanel(eventId) {
 /*
 // 從區域監控建立 RF 事件（onclick）
 function createRFEventfromArea(rfId, customCoordinates = null) {
-    const eventId = `RF-${String(++eventCounter).padStart(3, '0')}`;
+    const eventId = `RF-${String(++window.eventCounter).padStart(3, '0')}`;
     const eventIdLowerCase = eventId.toLowerCase();
 
     // 將該事件ID添加到創建中的集合
@@ -765,7 +774,7 @@ function exportRFData() {
 // TODO 生成船舶追蹤事件後將可疑列表中的對應船隻移除
 // 從 RF 事件建立船舶追蹤 (onclick)
 function createVesselEventFromRF() {
-    const eventId = `VESSEL-${String(++eventCounter).padStart(3, '0')}`;
+    const eventId = `VESSEL-${String(++window.eventCounter).padStart(3, '0')}`;
     const eventIdLowerCase = eventId.toLowerCase();
 
     // 將該事件ID添加到創建中的集合
@@ -837,10 +846,10 @@ function createVesselEventFromRF() {
 // ========== RF 監控事件功能結束 ==========
 
 // 從區域監控建立船舶追蹤事件 (onclick)
-function createVesselEventFromArea(rfId) {
+async function createVesselEventFromArea(rfId) {
     console.log(`🚢 開始建立船舶追蹤事件，RF ID: ${rfId}`);
     
-    const eventId = `VESSEL-${String(++eventCounter).padStart(3, '0')}`;
+    const eventId = `VESSEL-${String(++window.eventCounter).padStart(3, '0')}`;
     const eventIdLowerCase = eventId.toLowerCase();
 
     // 將該事件ID添加到創建中的集合
@@ -955,22 +964,39 @@ function createVesselEventFromArea(rfId) {
             seaDotInfo: seaDotInfo
         },
         
-        trackPoints: null // 稍後生成固定軌跡點
+        trackPoints: null // 待生成
     };
 
     console.log(`📦 建立的船舶事件完整資料:`, eventData);
 
-    // TODO 從區域事件生成船舶調查事件時的軌跡點生成機制
-    // 為vessel event生成固定的track points
-    // try {
-    //     const coords = parsePointCoordinates(eventData.coordinates);
-    //     if (coords) {
-    //         eventData.trackPoints = eventStorage.generateFixedTrackPoints(eventData.id, coords.lat, coords.lon);
-    //         console.log(`✅ 為新建船舶事件 ${eventId} 生成了固定的軌跡點`);
-    //     }
-    // } catch (error) {
-    //     console.warn(`⚠️ 為船舶事件 ${eventId} 生成軌跡點時發生錯誤:`, error);
-    // }
+    // === 生成船舶歷史軌跡點 ===
+    try {
+        if (window.trackPointGenerator) {
+            // 使用統一的軌跡生成器
+            const vessel = {
+                mmsi: vesselCandidate?.mmsi || eventData.mmsi,
+                vesselType: vesselCandidate?.vesselType || eventData.vesselType || '不明',
+                lat: vesselCandidate?.lat || lat,  // 使用前面定義的 lat 變數
+                lon: vesselCandidate?.lon || lon   // 使用前面定義的 lon 變數
+            };
+
+            console.log(`🔧 準備生成軌跡點，vessel 資料:`, vessel);
+
+            // 使用 mock 資料（開發模式）
+            eventData.trackPoints = await window.trackPointGenerator.generateTrackPoints(vessel, {
+                source: 'mock',
+                eventId: eventId
+            });
+
+            console.log(`✅ 為船舶事件 ${eventId} 生成了軌跡 (${eventData.trackPoints.length} 個點)`);
+        } else {
+            console.warn(`⚠️ trackPointGenerator 不可用，無法生成軌跡點`);
+            eventData.trackPoints = null;
+        }
+    } catch (error) {
+        console.error(`❌ 生成軌跡點失敗:`, error);
+        eventData.trackPoints = null;
+    }
 
     // 儲存船舶追蹤事件資料到 eventStorage
     eventStorage.saveEvent(eventId.toLowerCase(), eventData);
@@ -1023,6 +1049,21 @@ function createVesselEventFromArea(rfId) {
 
     console.log(`✅ 船舶追蹤事件 ${eventId} 已從區域監控事件 ${currentAreaEvent.id} 的可疑船隻 ${rfId} 建立完成`);
     console.log(`📊 事件摘要 - MMSI: ${mmsi}, 威脅分數: ${threatScore}, AIS: ${eventData.aisStatus}`);
+
+    // 自動跳轉到新建立的船舶事件
+    setTimeout(() => {
+        const newEventCard = document.querySelector(`[data-event-id="${eventIdLowerCase}"]`) ||
+                            Array.from(document.querySelectorAll('.event-card')).find(card =>
+                                card.getAttribute('onclick')?.includes(eventIdLowerCase)
+                            );
+
+        if (newEventCard) {
+            console.log(`🎯 自動跳轉到新建立的船舶事件: ${eventId}`);
+            selectEvent(newEventCard, eventIdLowerCase);
+        } else {
+            console.warn(`⚠️ 找不到新建立的事件卡: ${eventId}`);
+        }
+    }, 3500); // 等待事件卡建立完成（3秒狀態更新 + 0.5秒緩衝）
 }
 
 /**
@@ -1043,7 +1084,7 @@ function createVesselEventFromRFSignal(rfId, coordinates) {
     }
     
     // 生成新的船舶事件 ID
-    const eventId = `VESSEL-${String(++eventCounter).padStart(3, '0')}`;
+    const eventId = `VESSEL-${String(++window.eventCounter).padStart(3, '0')}`;
     const eventIdLowerCase = eventId.toLowerCase();
     
     // 將該事件ID添加到創建中的集合
@@ -1220,6 +1261,18 @@ function createVesselEventFromRFSignal(rfId, coordinates) {
             console.log(`🟡 已將地圖上的 RF 信號 ${rfId} 標記為正在追蹤（黃色）`);
         }
     }
+    
+    // 關閉所有打開的彈窗
+    if (taiwanMap) {
+        taiwanMap.closePopup();
+        console.log(`✅ 已關閉 RF 信號點彈窗`);
+    }
+    
+    // 更新該 RF 信號點的彈窗內容（移除建立按鈕）
+    if (window.seaDotManager && typeof window.seaDotManager.updateRFSignalPopup === 'function') {
+        window.seaDotManager.updateRFSignalPopup(rfId);
+        console.log(`✅ 已更新 RF 信號 ${rfId} 的彈窗內容`);
+    }
         
     console.log(`✅ 船舶追蹤事件 ${eventId} 已從 RF 信號 ${rfId} 建立完成`);
     console.log(`📊 事件摘要 - MMSI: ${mmsi}, 船名: ${vesselName}, 威脅分數: ${threatScore}, AIS: ${aisStatus}`);
@@ -1232,6 +1285,14 @@ function createVesselEventFromRFSignal(rfId, coordinates) {
 
 // 全域橋樑函數：跳轉到歷史軌跡點 (onclick)
 function jumpToHistoryPoint(hoursBack) {
+    console.log(`🔵 [script.js] jumpToHistoryPoint 被呼叫, hoursBack: ${hoursBack}`);
+
+    // 檢查 VesselEventManager 是否存在
+    if (typeof VesselEventManager === 'undefined') {
+        console.error('❌ VesselEventManager 未定義');
+        return;
+    }
+
     // 使用重構後的 VesselEventManager 類別方法
     VesselEventManager.jumpToHistoryPoint(hoursBack);
 }
@@ -1291,6 +1352,150 @@ function rejectAction() {
     return 'reject';
 }
 
+// 結束船舶事件
+function completeVesselEvent(eventId) {
+    console.log(`📋 開始結束事件: ${eventId}`);
+
+    const eventData = window.eventStorage.getEvent(eventId);
+
+    if (!eventData) {
+        console.error(`❌ 找不到事件: ${eventId}`);
+        alert('找不到該事件');
+        return;
+    }
+
+    if (eventData.status === 'completed') {
+        alert('該事件已經結束');
+        return;
+    }
+
+    // 顯示確認對話框
+    const confirmClose = confirm(`確定要結束事件 ${eventId.toUpperCase()} 嗎？\n\n結束後將無法繼續追蹤此船舶。`);
+
+    if (!confirmClose) {
+        console.log('❌ 用戶取消結束事件');
+        return;
+    }
+
+    // 更新事件狀態
+    const completedTime = new Date().toISOString();
+    window.eventStorage.updateEvent(eventId, {
+        status: 'completed',
+        completedTime: completedTime
+    });
+
+    // 更新事件卡樣式
+    const eventCard = document.querySelector(`[data-event-id="${eventId}"]`) ||
+                      Array.from(document.querySelectorAll('.event-card')).find(card =>
+                          card.getAttribute('onclick')?.includes(eventId)
+                      );
+
+    if (eventCard) {
+        eventCard.classList.add('completed');
+
+        const statusDot = eventCard.querySelector('.status-dot');
+        const statusText = eventCard.querySelector('.event-status span');
+
+        if (statusDot) statusDot.className = 'status-dot status-completed';
+        if (statusText) statusText.textContent = '已結束';
+    }
+
+    // 清除地圖上的歷史軌跡
+    if (window.historyTrackManager) {
+        window.historyTrackManager.clearHistoryTrack();
+    }
+
+    // 更新詳情面板顯示已結束狀態
+    updateDetailsPanel(eventId);
+
+    // 更新 Tab 計數
+    updateEventCounts();
+
+    // 顯示成功訊息
+    const completedTimeStr = new Date(completedTime).toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    alert(`✅ 事件 ${eventId.toUpperCase()} 已成功結束\n\n結束時間: ${completedTimeStr}`);
+
+    console.log(`✅ 事件 ${eventId} 已標記為完成，完成時間: ${completedTimeStr}`);
+}
+
+// Tab 切換功能
+function switchEventTab(tab) {
+    console.log(`🔄 切換到 ${tab} Tab`);
+
+    // 更新 Tab 按鈕狀態
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        if (btn.dataset.tab === tab) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // 過濾事件顯示
+    filterEventsByStatus(tab);
+
+    // 更新容器的 data-view 屬性
+    const eventsContainer = document.querySelector('.events-container');
+    if (eventsContainer) {
+        eventsContainer.dataset.view = tab;
+    }
+}
+
+// 過濾事件顯示
+function filterEventsByStatus(tab) {
+    const eventsContainer = document.querySelector('.events-container');
+    const allCards = eventsContainer.querySelectorAll('.event-card');
+
+    allCards.forEach(card => {
+        const eventId = card.dataset.eventId ||
+                       card.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+
+        if (!eventId) {
+            card.style.display = 'block';
+            return;
+        }
+
+        const eventData = window.eventStorage.getEvent(eventId);
+
+        if (tab === 'active') {
+            // 顯示進行中的事件（非 completed 狀態）
+            card.style.display = (eventData?.status !== 'completed') ? 'block' : 'none';
+        } else if (tab === 'completed') {
+            // 顯示已結束的事件
+            card.style.display = (eventData?.status === 'completed') ? 'block' : 'none';
+        }
+    });
+}
+
+// 更新事件計數
+function updateEventCounts() {
+    const activeCountEl = document.getElementById('activeCount');
+    const completedCountEl = document.getElementById('completedCount');
+
+    if (!window.eventStorage || !window.eventStorage.events) {
+        if (activeCountEl) activeCountEl.textContent = '0';
+        if (completedCountEl) completedCountEl.textContent = '0';
+        return;
+    }
+
+    const allEvents = Array.from(window.eventStorage.events.values());
+    const activeCount = allEvents.filter(e => e.status !== 'completed').length;
+    const completedCount = allEvents.filter(e => e.status === 'completed').length;
+
+    if (activeCountEl) activeCountEl.textContent = activeCount;
+    if (completedCountEl) completedCountEl.textContent = completedCount;
+
+    console.log(`📊 事件計數更新 - 進行中: ${activeCount}, 已結束: ${completedCount}`);
+}
+
 // TODO 整理 executeAction 內部相關 function 程式碼
 // 執行行動 (onclick)
 function executeAction() {
@@ -1298,6 +1503,12 @@ function executeAction() {
 
     if (!selectedAction) {
         alert('請先選擇一個行動選項！');
+        return;
+    }
+
+    // 特殊處理：結束事件
+    if (selectedAction === 'close') {
+        completeVesselEvent(currentEventId);
         return;
     }
 
@@ -2912,6 +3123,74 @@ function addRandomSeaDots() {
     if (window.eventStorage && typeof window.eventStorage.reinitializeVesselEvents === 'function') {
         window.eventStorage.reinitializeVesselEvents('vessel-003', '16.797148°N, 115.850213°E');
         window.eventStorage.reinitializeVesselEvents('vessel-004', '11.583010°N, 111.252487°E');
+        
+        // 在重新初始化後，額外更新事件卡顯示（延遲以確保 DOM 已更新）
+        setTimeout(() => {
+            updateDefaultVesselEventCards();
+        }, 500);
+    }
+
+    // 初始化事件計數
+    setTimeout(() => {
+        updateEventCounts();
+    }, 800);
+}
+
+// 更新預設船舶事件卡的顯示內容
+function updateDefaultVesselEventCards() {
+    console.log('🔄 開始更新預設船舶事件卡顯示...');
+    
+    if (!window.eventStorage) {
+        console.warn('⚠️ eventStorage 未初始化，無法更新事件卡');
+        return;
+    }
+    
+    // 更新 vessel-003 事件卡
+    const vessel003Data = eventStorage.getEvent('vessel-003');
+    if (vessel003Data) {
+        console.log('📦 vessel-003 資料:', vessel003Data);
+        const vessel003Card = document.querySelector('[onclick*="vessel-003"]');
+        if (vessel003Card) {
+            const eventInfo = vessel003Card.querySelector('.event-info');
+            if (eventInfo) {
+                eventInfo.innerHTML = `
+                    MMSI: ${vessel003Data.mmsi || '未知'}<br>
+                    座標: ${vessel003Data.coordinates}<br>
+                    威脅分數: ${vessel003Data.threatScore}
+                `;
+                console.log('✅ 已更新 vessel-003 事件卡顯示');
+            } else {
+                console.warn('⚠️ 找不到 vessel-003 事件卡的 .event-info 元素');
+            }
+        } else {
+            console.warn('⚠️ 找不到 vessel-003 事件卡');
+        }
+    } else {
+        console.warn('⚠️ 找不到 vessel-003 事件資料');
+    }
+
+    // 更新 vessel-004 事件卡
+    const vessel004Data = eventStorage.getEvent('vessel-004');
+    if (vessel004Data) {
+        console.log('📦 vessel-004 資料:', vessel004Data);
+        const vessel004Card = document.querySelector('[onclick*="vessel-004"]');
+        if (vessel004Card) {
+            const eventInfo = vessel004Card.querySelector('.event-info');
+            if (eventInfo) {
+                eventInfo.innerHTML = `
+                    MMSI: ${vessel004Data.mmsi || '未知'}<br>
+                    座標: ${vessel004Data.coordinates}<br>
+                    威脅分數: ${vessel004Data.threatScore}
+                `;
+                console.log('✅ 已更新 vessel-004 事件卡顯示');
+            } else {
+                console.warn('⚠️ 找不到 vessel-004 事件卡的 .event-info 元素');
+            }
+        } else {
+            console.warn('⚠️ 找不到 vessel-004 事件卡');
+        }
+    } else {
+        console.warn('⚠️ 找不到 vessel-004 事件資料');
     }
 }
 
@@ -3052,10 +3331,10 @@ function resetMapZoom() {
             easeLinearity: 0.25
         });
 
-        console.log('🎯 地圖已重置到預設大小');
+        console.log('🎯 地圖已重置回預設模式');
 
         // 顯示地圖調整訊息
-        showMapAdjustmentMessage('地圖已重置到預設大小');
+        showMapAdjustmentMessage('地圖已重置回預設模式');
     }
 }
 

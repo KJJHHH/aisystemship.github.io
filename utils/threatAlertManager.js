@@ -3,7 +3,7 @@
   class ThreatAlertManager {
     constructor() {
       this.alertThreshold = 70;
-      this.checkInterval = 10000; // 10秒
+      this.checkInterval = 60000; // 60秒（1分鐘）
       this.intervalId = null;
     }
 
@@ -11,7 +11,7 @@
      * 開始威脅監控
      */
     startMonitoring() {
-      console.log('🚨 開始威脅警示監控 (每10秒檢查一次)');
+      console.log('🚨 開始威脅警示監控 (每1分鐘檢查一次)');
 
       this.intervalId = setInterval(() => {
         this.checkForThreats();
@@ -33,22 +33,27 @@
     }
 
     /**
-     * 檢查威脅
+     * 檢查威脅（支援 async API 呼叫）
      */
-    checkForThreats() {
-      // 生成新船隻資料
+    async checkForThreats() {
+      // 檢查資料生成器是否存在
       if (typeof window.vesselDataGenerator === 'undefined') {
         console.error('❌ VesselDataGenerator 未初始化');
         return;
       }
 
-      const vesselData = window.vesselDataGenerator.generateRandomVessel();
+      try {
+        // 使用 async API 取得船隻資料
+        const vesselData = await window.vesselDataGenerator.fetchRandomVessel();
 
-      console.log(`🔍 檢查船隻: MMSI ${vesselData.mmsi}, 威脅分數: ${vesselData.riskScore}`);
+        console.log(`🔍 檢查船隻: MMSI ${vesselData.mmsi}, 威脅分數: ${vesselData.riskScore}`);
 
-      // 如果威脅分數 ≥70，觸發警示
-      if (vesselData.riskScore >= this.alertThreshold) {
-        this.triggerAlert(vesselData);
+        // 如果威脅分數 ≥70，觸發警示
+        if (vesselData.riskScore >= this.alertThreshold) {
+          this.triggerAlert(vesselData);
+        }
+      } catch (error) {
+        console.error('❌ 檢查威脅時發生錯誤:', error);
       }
     }
 
@@ -87,14 +92,20 @@
         type: 'vessel',
         mmsi: vesselData.mmsi,
         vesselName: vesselData.vesselName,
+        vesselType: vesselData.vesselType || '貨輪',
         coordinates: vesselData.coordinates,
-        riskScore: vesselData.riskScore,
+        threatScore: vesselData.riskScore, // 使用 threatScore（與從區域監控創建的一致）
+        riskScore: vesselData.riskScore,   // 保留舊名稱向後兼容
         aisStatus: vesselData.aisStatus,
         createTime: new Date().toLocaleTimeString('zh-TW', {hour12: false, hour: '2-digit', minute: '2-digit'}),
         status: 'investigating',
         isAlertActive: true,
         alertViewed: false,
-        trackPoints: this.generateSimulatedTrackPoints(vesselData)
+        trackPoints: this.generateSimulatedTrackPoints(vesselData),
+
+        // 新增：來源資訊（標記為威脅警報生成）
+        source: 'threat_alert',
+        investigationReason: vesselData.investigationReason || '威脅分數超過閾值，自動觸發警示'
       };
 
       // 儲存事件（會自動生成 alertTime）

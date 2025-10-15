@@ -1,4 +1,4 @@
-// VesselDataGenerator - 船隻資料生成器
+// VesselDataGenerator - 船隻資料生成器（整合 GFW API）
 (function(){
   class VesselDataGenerator {
     constructor() {
@@ -7,10 +7,45 @@
         '太平洋', '海鷗號', '順風號', '長城', '和平號',
         '福星號', '龍騰', '雄鷹', '晨曦', '希望'
       ];
+      this.apiBaseUrl = 'http://localhost:5000/api';
+      this.useRealAPI = true;  // 設定為 false 則使用模擬資料
     }
 
     /**
-     * 生成隨機船隻資料
+     * 取得隨機船隻資料（優先使用 API，失敗則降級到模擬）
+     */
+    async fetchRandomVessel() {
+      if (!this.useRealAPI) {
+        console.log('⚙️ 使用模擬資料模式');
+        return this.generateRandomVessel();
+      }
+
+      try {
+        console.log('🌐 呼叫 GFW API...');
+        const response = await fetch(`${this.apiBaseUrl}/vessels/random`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000  // 5 秒超時
+        });
+
+        if (!response.ok) {
+          throw new Error(`API 回應錯誤: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ 成功取得 GFW 船隻資料:', data.mmsi);
+        return data;
+
+      } catch (error) {
+        console.warn('⚠️ GFW API 呼叫失敗，降級使用模擬資料:', error.message);
+        return this.generateRandomVessel();
+      }
+    }
+
+    /**
+     * 生成隨機船隻資料（模擬資料，作為降級方案）
      */
     generateRandomVessel() {
       const riskScore = this.generateRiskScore();
@@ -159,7 +194,7 @@
           lat: parseFloat(lat.toFixed(3)),
           lon: parseFloat(lon.toFixed(3)),
           timestamp: timestamp.toISOString(),
-          speed: (Math.random() * 30).toFixed(1),
+          speed: parseFloat((Math.random() * 30).toFixed(1)), // 轉換為數字
           course: Math.floor(Math.random() * 360)
         });
       }

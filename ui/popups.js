@@ -49,6 +49,7 @@
 
         // 檢查此 RF 信號是否出現在船舶追蹤事件中
         let vesselEventInfo = null;
+        let hasVesselEvent = false;
         if (rfId && window.eventStorage) {
             // 獲取所有事件
             const allEvents = window.eventStorage.getAllEvents ? window.eventStorage.getAllEvents() : [];
@@ -60,6 +61,7 @@
             if (vesselEvents.length > 0) {
                 // 使用最新的船舶事件
                 vesselEventInfo = vesselEvents[vesselEvents.length - 1];
+                hasVesselEvent = true;
             }
         }
 
@@ -84,6 +86,16 @@
             `;
         }
 
+        // 構建建立船舶追蹤按鈕區塊（只在未建立船舶事件時顯示）
+        let createVesselButtonSection = '';
+        if (!hasVesselEvent) {
+            createVesselButtonSection = `
+                <div style="margin-top: 10px;">
+                    <button class="create-vessel-btn" onclick="createVesselEventFromRFSignal('${rfId}', '${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E')" style="background: #135edfff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; margin-bottom: 4px; transition: all 0.3s ease;">建立船舶追蹤事件</button>
+                </div>
+            `;
+        }
+
         return `
             <div style="color: #333; font-size: 12px; min-width: 220px;">
                 <div style="margin-bottom: 12px;">
@@ -99,9 +111,7 @@
                     </div>
                 </div>
                 ${vesselTrackingSection}
-                <div style="margin-top: 10px;">
-                    <button class="create-vessel-btn" onclick="createVesselEventFromRFSignal('${rfId}', '${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E')" style="background: #135edfff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; margin-bottom: 4px; transition: all 0.3s ease;">建立船舶追蹤事件</button>
-                </div>
+                ${createVesselButtonSection}
             </div>
         `;
     }
@@ -191,9 +201,9 @@
 
                 ${point.speed ? `
                 <div style="margin-bottom: 8px; font-size: 11px;">
-                    <strong>航行速度:</strong> ${point.speed.toFixed(1)} 節<br>
-                    ${point.course ? `<strong>航向:</strong> ${point.course.toFixed(0)}°<br>` : ''}
-                    ${point.signalStrength ? `<strong>信號強度:</strong> ${point.signalStrength.toFixed(1)} dBm<br>` : ''}
+                    <strong>航行速度:</strong> ${typeof point.speed === 'number' ? point.speed.toFixed(1) : parseFloat(point.speed).toFixed(1)} 節<br>
+                    ${point.course ? `<strong>航向:</strong> ${typeof point.course === 'number' ? point.course.toFixed(0) : parseFloat(point.course).toFixed(0)}°<br>` : ''}
+                    ${point.signalStrength ? `<strong>信號強度:</strong> ${typeof point.signalStrength === 'number' ? point.signalStrength.toFixed(1) : parseFloat(point.signalStrength).toFixed(1)} dBm<br>` : ''}
                 </div>
                 ` : ''}
 

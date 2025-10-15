@@ -57,6 +57,9 @@
         status: 'investigating'
       });
 
+      // ========== 暫時停用 RF 監控事件功能 ==========
+      // RF-002 事件已停用，不再初始化到 eventStorage
+      /*
       // 初始化 RF 事件，等待 SeaDotManager 可用後再填入具體資訊
       let rfEventData = {
         id: 'rf-002',
@@ -73,6 +76,8 @@
       };
 
       this.events.set('rf-002', rfEventData);
+      */
+      // ========== RF 監控事件功能結束 ==========
 
       this.events.set('vessel-003', {
         id: 'vessel-003',
@@ -80,11 +85,23 @@
         mmsi: '416123456',
         coordinates: '等待初始化...', // 將通過 reinitializeVesselEvents 設定
         vesselName: '未知船舶',
+        vesselType: '貨輪',
         threatScore: 85,
         createTime: '12:30',
         alertTime: '12:35', // 風險分數 ≥70，自動生成警示時間（createTime + 5分鐘）
         status: 'investigating',
         aisStatus: '未開啟',
+        rfId: 'SIG-003A5B',
+        // === RF 信號資訊 ===
+        frequency: '162.135',
+        signalStrength: '-52.3',
+        timestamp_utc: new Date(Date.now() - 30 * 60000).toISOString(), // 30分鐘前
+        latitude_deg: '16.797',
+        longitude_deg: '115.850',
+        accuracy_level: '高',
+        pulses_duration_ns: 125,
+        pulses_repetition_frequency_hz: 850,
+        waveform: '脈衝波',
         trackPoints: this.generateSimulatedTrackPoints('cargo')
       });
 
@@ -94,11 +111,23 @@
         mmsi: '416789012',
         coordinates: '等待初始化...', // 將通過 reinitializeVesselEvents 設定
         vesselName: '漁船阿勇號',
+        vesselType: '漁船',
         threatScore: 58,
         createTime: '10:15',
         status: 'completed',
         aisStatus: '未開啟',
         completedTime: '12:45',
+        rfId: 'SIG-004C8D',
+        // === RF 信號資訊 ===
+        frequency: '161.975',
+        signalStrength: '-68.7',
+        timestamp_utc: new Date(Date.now() - 165 * 60000).toISOString(), // 2小時45分鐘前
+        latitude_deg: '11.583',
+        longitude_deg: '111.252',
+        accuracy_level: '標準',
+        pulses_duration_ns: 95,
+        pulses_repetition_frequency_hz: 620,
+        waveform: '正弦波',
         trackPoints: this.generateSimulatedTrackPoints('fishing')
       });
     }
@@ -221,9 +250,12 @@
         return;
       }
 
-      // 重新初始化 vessel-003 事件
+      // 重新初始化船舶事件
       const existingVesselEvent = this.events.get(eventid);
-      if (!existingVesselEvent) return;
+      if (!existingVesselEvent) {
+        console.warn(`⚠️ 找不到事件: ${eventid}`);
+        return;
+      }
 
       // 從所有 sea dots 中隨機選擇一個
       const allDots = window.seaDotManager.getAllDots();
@@ -241,6 +273,12 @@
         threatScore = 58; // 保持低威脅分數
       }
 
+      // 獲取點的顏色（修復 resolvedColor 未定義問題）
+      const dotColor = (typeof getDotColor === 'function') ? getDotColor(randomDot) : randomDot.dotColor;
+      const bgColor = (typeof getBackgroundColor === 'function') ? 
+        (getBackgroundColor(randomDot) || randomDot.backgroundColor || dotColor) : 
+        (randomDot.backgroundColor || dotColor);
+
       // 更新事件資料
       const updatedEventData = {
         ...existingVesselEvent,
@@ -250,31 +288,26 @@
         sourceSeaDot: {
           id: (typeof getSafePointId === 'function') ? getSafePointId(randomDot) : randomDot.id,
           status: randomDot.status,
-          dotColor: (typeof getDotColor === 'function') ? (resolvedColor || getDotColor(randomDot)) : (resolvedColor || randomDot.dotColor),
+          dotColor: dotColor,
           area: randomDot.area,
           // canonical display subobject for consumers
           display: {
-            dotColor: (typeof getDotColor === 'function') ? (resolvedColor || getDotColor(randomDot)) : (resolvedColor || randomDot.dotColor),
-            backgroundColor: (typeof getBackgroundColor === 'function') ? (getBackgroundColor(randomDot) || randomDot.backgroundColor || resolvedColor || ((typeof getDotColor === 'function') ? getDotColor(randomDot) : randomDot.dotColor)) : (randomDot.backgroundColor || resolvedColor || ((typeof getDotColor === 'function') ? getDotColor(randomDot) : randomDot.dotColor))
+            dotColor: dotColor,
+            backgroundColor: bgColor
           }
         }
       };
 
-      // 對於 vessel-003，我們希望保留預設的軌跡點，不重新生成
-      if (existingVesselEvent.id === eventid) {
+      // 保留現有軌跡點
+      if (existingVesselEvent.trackPoints) {
         updatedEventData.trackPoints = existingVesselEvent.trackPoints;
-        console.log(`🔄 為船舶事件 vessel-003 保留了預設的 'cargo' 軌跡點`);
-      } else if (!existingVesselEvent.trackPoints || existingVesselEvent.trackPoints.length === 0) {
-        updatedEventData.trackPoints = this.generateFixedTrackPoints(existingVesselEvent.id, randomDot.lat, randomDot.lon);
-        console.log(`✅ 為重新初始化的船舶事件 ${existingVesselEvent.id} 生成了新的固定軌跡點`);
-      } else {
-        // 保留現有軌跡點
-        updatedEventData.trackPoints = existingVesselEvent.trackPoints;
-        console.log(`🔄 為重新初始化的船舶事件 ${existingVesselEvent.id} 保留了現有的軌跡點`);
+        console.log(`🔄 為船舶事件 ${eventid} 保留了現有的軌跡點`);
       }
 
+      // 更新到 events Map
       this.events.set(eventid, updatedEventData);
-      console.log(`✅ Vessel 事件 vessel-003 已重新初始化，使用 sea dot ${randomDot.id}，威脅分數: ${threatScore}，AIS 狀態: ${aisStatus}，座標: ${updatedEventData.coordinates}`);
+      console.log(`✅ Vessel 事件 ${eventid} 已重新初始化，使用 sea dot ${randomDot.id}，威脅分數: ${threatScore}，AIS 狀態: ${aisStatus}，座標: ${updatedEventData.coordinates}`);
+      
       // 更新事件卡顯示
       this.updateEventCardDisplay(eventid, updatedEventData);
     }
@@ -315,28 +348,6 @@
         console.warn(`找不到事件卡: ${eventId}`);
         return;
       }
-
-      // 根據事件類型更新顯示內容
-      if (eventData.type === 'rf') {
-        const eventInfoElement = targetCard.querySelector('.event-info');
-        if (eventInfoElement) {
-          eventInfoElement.innerHTML = `
-            RF 信號 ID: ${eventData.rfId}<br>
-            座標: ${eventData.coordinates}<br>
-          `;
-          console.log(`✅ 已更新 ${eventId} 事件卡顯示內容`);
-        }
-      } else if (eventData.type === 'vessel') {
-        const eventInfoElement = targetCard.querySelector('.event-info');
-        if (eventInfoElement) {
-          eventInfoElement.innerHTML = `
-            威脅分數: ${eventData.threatScore}<br>
-            座標: ${eventData.coordinates}<br>
-            AIS 狀態: ${eventData.aisStatus || '未知'}
-          `;
-          console.log(`✅ 已更新 ${eventId} 事件卡顯示內容`);
-        }
-      }
     }
 
     // 從事件卡獲取事件ID的輔助方法
@@ -354,6 +365,9 @@
     }
 
     // 生成固定的軌跡點（用於vessel事件，只生成一次）
+    /**
+     * @deprecated 此函數已不再使用，請使用 window.trackPointGenerator.generateTrackPoints() 替代
+     */
     generateFixedTrackPoints(eventId, endLat, endLon) {
       const totalHistoryPoints = 8; // 歷史點數量
       const totalFuturePoints = 4;  // 未來點數量
@@ -638,7 +652,18 @@
       }
     }
 
+    /**
+     * @deprecated 請使用 window.trackPointGenerator.generateTrackPoints() 替代
+     * 此方法保留用於向後兼容
+     */
     generateSimulatedTrackPoints(shiptype) {
+      // 如果新的 Generator 可用，使用它
+      if (window.trackPointGenerator) {
+        const vessel = { vesselType: shiptype === 'fishing' ? '漁船' : '貨輪' };
+        return window.trackPointGenerator.generateMockData(vessel, { eventId: 'legacy' });
+      }
+
+      // 降級：使用原本的實作（下面的代碼保持不變）
       // 重要時間點（小時） - 與船舶軌跡檢視選項對齊
       const importantHours = [120, 96, 72, 48, 24, 12, 6, 3, 0]; // 從遠到近
       const currentTime = new Date();

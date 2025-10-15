@@ -480,11 +480,11 @@
                 const mockVessels = [
                     {
                         mmsi: `${Math.floor(Math.random() * 900000000) + 100000000}`, // 生成九位數MMSI
-                        type: ['貨船', '漁船',][Math.floor(Math.random() * 2)],
+                        type: ['貨輪', '漁船',][Math.floor(Math.random() * 2)],
                         lat: rfLat + (Math.random() - 0.5) * 0.01, // 在RF信號附近隨機生成
                         lon: rfLon + (Math.random() - 0.5) * 0.01,
                         threatScore: Math.floor(Math.random() * 60) + 31, // 40-90的高威脅分數
-                        aisStatus: 'AIS關閉'
+                        aisStatus: '未開啟'
                     }
                 ];
 

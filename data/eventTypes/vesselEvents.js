@@ -48,69 +48,22 @@
         
         // 更新 eventData 以使用映射後的狀態
         eventData.aisStatus = displayAisStatus;
-        
-        // === AIS 已開啟的簡化顯示模式 ===
-        // 當 AIS 狀態為「已開啟」時，只顯示基本資訊和船隻圖片
-        if (displayAisStatus === '已開啟') {
-            console.log(`✅ 事件 ${eventData.id} AIS 已開啟，使用簡化顯示模式`);
+
+        // === 統一顯示模式：整合所有資訊 ===
+        console.log(`📊 事件 ${eventData.id} 使用統一顯示模式`);
             
-            // 生成船隻資訊（如果尚未存在）
-            if (!eventData.shipInfo) {
-                eventData.shipInfo = VesselEventManager.generateShipInfo(eventData);
-                
-                // 將船隻資訊儲存回事件資料中
-                if (eventData.id && window.eventStorage) {
-                    window.eventStorage.updateEvent(eventData.id, { shipInfo: eventData.shipInfo });
-                }
+        // 生成船隻資訊（所有事件都需要）
+        if (!eventData.shipInfo) {
+            eventData.shipInfo = VesselEventManager.generateShipInfo(eventData);
+
+            // 將船隻資訊儲存回事件資料中
+            if (eventData.id && window.eventStorage) {
+                window.eventStorage.updateEvent(eventData.id, { shipInfo: eventData.shipInfo });
             }
-            
-            const shipInfo = eventData.shipInfo;
-            
-            return `
-                <div class="summary-section">
-                    <div class="section-title">事件簡介</div>
-                    <div style="font-size: 13px; line-height: 1.5; color: #b8c5d1;">
-                        <strong>MMSI：</strong>${eventData.mmsi || '未知'}<br>
-                        <strong>座標：</strong>${eventData.coordinates || '待定位'}<br>
-                        <strong>AIS狀態：</strong>
-                        <span style="color: #10b981;">
-                            ${eventData.aisStatus}
-                        </span><br>
-                        <strong>建立時間：</strong>${eventData.createTime}<br>
-                    </div>
-                </div>
-
-                <div class="evidence-section">
-                    <div class="section-title">🚢 船隻資訊</div>
-                    <div class="ship-info-card ais-enabled">
-                        <div class="ship-header">
-                            <span class="ship-type">${shipInfo.type}</span>
-                            <span class="ship-status status-ais">AIS已開啟</span>
-                        </div>
-                        <div class="ship-image-container">
-                            <img src="${shipInfo.image}" alt="${shipInfo.type}" class="ship-image" />
-                        </div>
-                        <div class="ship-details">
-                            <div class="detail-row"><span>MMSI:</span><span>${shipInfo.mmsi}</span></div>
-                            <div class="detail-row"><span>船名:</span><span>${shipInfo.name || eventData.vesselName || '未知'}</span></div>
-                            <div class="detail-row"><span>船長:</span><span>${shipInfo.length}公尺</span></div>
-                            <div class="detail-row"><span>船寬:</span><span>${shipInfo.beam}公尺</span></div>
-                            <div class="detail-row"><span>航速:</span><span>${shipInfo.speed}節</span></div>
-                            <div class="detail-row"><span>航向:</span><span>${shipInfo.course}°</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeModal()">關閉</button>
-                </div>
-            `;
         }
-        
-        // === AIS 未開啟或其他狀態的完整顯示模式 ===
-        console.log(`⚠️ 事件 ${eventData.id} AIS 未開啟或異常，使用完整顯示模式`);
-        
-        const threatScore = eventData.threatScore || 0;
+
+        const shipInfo = eventData.shipInfo;
+        const threatScore = eventData.threatScore || eventData.riskScore || 0;
         const riskColor = threatScore >= 80 ? '#ef4444' : threatScore >= 60 ? '#f59e0b' : '#10b981';
         const riskLevel = threatScore >= 80 ? '高風險' : threatScore >= 60 ? '中風險' : '低風險';
         const isCompleted = eventData.status === 'completed';
@@ -146,12 +99,13 @@
                         </div>
                     </div>
                     
-                    <!-- 3. 四個行動選項按鈕 (可多選) -->
+                    <!-- 3. 五個行動選項按鈕 (可多選) -->
                     <div class="action-grid">
                         <div class="action-btn" onclick="selectAction('track', this)">🎯<br>持續追蹤</div>
                         <div class="action-btn" onclick="selectAction('satellite', this)">🛰️<br>衛星重拍</div>
                         <div class="action-btn" onclick="selectAction('notify', this)">📞<br>通知單位</div>
                         <div class="action-btn" onclick="selectAction('uav', this)">🚁<br>派遣載具</div>
+                        <div class="action-btn action-btn-close" onclick="selectAction('close', this)">✅<br>結束事件</div>
                     </div>
 
                     <!-- 4. 時間排程選擇 -->
@@ -231,8 +185,31 @@
                 </div>
             </div>
 
+            <div class="evidence-section">
+                <div class="section-title">🚢 船隻資訊</div>
+                <div class="ship-info-card">
+                    <div class="ship-header">
+                        <span class="ship-type">${shipInfo.type}</span>
+                        <span class="ship-status ${eventData.aisStatus === '已開啟' ? 'status-ais' : 'status-no-ais'}">
+                            ${eventData.aisStatus === '已開啟' ? 'AIS已開啟' : 'AIS未開啟'}
+                        </span>
+                    </div>
+                    <div class="ship-image-container">
+                        <img src="${shipInfo.image}" alt="${shipInfo.type}" class="ship-image" />
+                    </div>
+                    <div class="ship-details">
+                        <div class="detail-row"><span>MMSI:</span><span>${shipInfo.mmsi}</span></div>
+                        <div class="detail-row"><span>船名:</span><span>${shipInfo.name || eventData.vesselName || '未知'}</span></div>
+                        <div class="detail-row"><span>船長:</span><span>${shipInfo.length}公尺</span></div>
+                        <div class="detail-row"><span>船寬:</span><span>${shipInfo.beam}公尺</span></div>
+                        <div class="detail-row"><span>航速:</span><span>${shipInfo.speed}節</span></div>
+                        <div class="detail-row"><span>航向:</span><span>${shipInfo.course}°</span></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="evidence-section" style="background-color: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid rgba(148, 163, 184, 0.2);">
-                <div class="section-title">RF 信號資訊</div>
+                <div class="section-title">📡 RF 信號資訊</div>
                 <div style="font-size: 13px; line-height: 1.8; color: #b8c5d1; margin-top: 10px;">
                     🕐 時間戳記 (UTC): ${eventData.timestamp_utc || '檢測中'}<br>
                     📡 RF 頻率: ${eventData.frequency || '檢測中'} MHz<br>
@@ -319,16 +296,19 @@
         
         const selectedShipType = shipTypes[numSeed % shipTypes.length];
         
-        // 根據船舶類型獲取對應的圖片路徑
-        const getShipImage = (shipType) => {
-            return `images/${shipType}.jpg`;
+        // 根據船舶類型和 AIS 狀態獲取對應的圖片路徑
+        const getShipImage = (shipType, aisStatus) => {
+            // 判斷 AIS 狀態是否開啟
+            const isAisOn = aisStatus === '已開啟' || aisStatus === 'AIS' || aisStatus === 'ais';
+            const folderPath = isAisOn ? 'images/AIS' : 'images/No_AIS';
+            return `${folderPath}/${shipType}.jpg`;
         };
         
         return {
             name: eventData.vesselName || `${shipNamePrefixes[numSeed % shipNamePrefixes.length]} ${seed} ${shipNameSuffixes[numSeed % shipNameSuffixes.length]}`,
             mmsi: eventData.mmsi || `416${(numSeed % 1000000).toString().padStart(6, '0')}`,
             type: eventData.vesselType || selectedShipType,
-            image: getShipImage(eventData.vesselType || selectedShipType),
+            image: getShipImage(eventData.vesselType || selectedShipType, eventData.aisStatus),
             length: 80 + (numSeed % 270),
             beam: 12 + (numSeed % 35),
             destination: destinations[numSeed % destinations.length],
@@ -342,10 +322,16 @@
      * @param {number} hoursBack - 回溯小時數
      */
     static jumpToHistoryPoint(hoursBack) {
+        console.log(`🟢 [VesselEventManager] jumpToHistoryPoint 被呼叫, hoursBack: ${hoursBack}`);
+        console.log(`🟢 [VesselEventManager] historyTrackManager 狀態:`, {
+            exists: !!window.historyTrackManager,
+            hasMethod: window.historyTrackManager && typeof window.historyTrackManager.jumpToHistoryPoint === 'function'
+        });
+
         if (window.historyTrackManager && typeof window.historyTrackManager.jumpToHistoryPoint === 'function') {
             window.historyTrackManager.jumpToHistoryPoint(hoursBack);
         } else {
-            console.warn('⚠️ historyTrackManager 尚未初始化或方法不存在');
+            console.error('❌ historyTrackManager 尚未初始化或方法不存在');
         }
     }
 }

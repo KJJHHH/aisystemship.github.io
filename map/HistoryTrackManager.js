@@ -88,17 +88,37 @@
                 const isPast = pointTime < currentTime;
 
                 let trackPointType, trackPointStatus;
-                if (isPast) {
+
+                // ⚠️ 重要: 保留原始的 type,特別是 'Current' 類型
+                if (point.type === 'Current') {
+                    trackPointType = 'Current';
+                    trackPointStatus = 'AIS';
+                } else if (point.type === 'Future') {
+                    trackPointType = 'Future';
+                    trackPointStatus = point.hasTask ? 'Scheduled' : 'AIS';
+                } else if (point.type === 'History') {
                     trackPointType = 'History';
                     trackPointStatus = point.hasTask ? 'Completed' : 'AIS';
                 } else {
-                    trackPointType = 'Future';
-                    trackPointStatus = point.hasTask ? 'Scheduled' : 'AIS';
+                    // 如果沒有 type,根據時間判斷
+                    if (isPast) {
+                        trackPointType = 'History';
+                        trackPointStatus = point.hasTask ? 'Completed' : 'AIS';
+                    } else {
+                        trackPointType = 'Future';
+                        trackPointStatus = point.hasTask ? 'Scheduled' : 'AIS';
+                    }
                 }
 
                 let marker;
                 if (seaDotManager && typeof seaDotManager.createTrackSeaDotFromPoint === 'function') {
-                    marker = seaDotManager.createTrackSeaDotFromPoint(Object.assign({}, point, { pointId: point.pointId || getSafePointId(point) }));
+                    // ⚠️ 重要: 明確覆寫 type 為修正後的 trackPointType
+                    marker = seaDotManager.createTrackSeaDotFromPoint(
+                        Object.assign({}, point, {
+                            pointId: point.pointId || getSafePointId(point),
+                            type: trackPointType  // 使用修正後的類型
+                        })
+                    );
                 } else {
                     marker = seaDotManager.createTrackSeaDot(
                         point.lat,
@@ -142,25 +162,33 @@
          * @param {number} hoursBack - 要跳轉到的小時數（從現在往前推算）
          */
         jumpToHistoryPoint(hoursBack) {
-            console.log(`🎯 用戶點擊了${hoursBack}小時前的按鈕`);
-            
+            console.log(`🟡 [HistoryTrackManager] jumpToHistoryPoint 被呼叫, hoursBack: ${hoursBack}`);
+            console.log(`🟡 [HistoryTrackManager] 當前狀態:`, {
+                currentTrackingVesselId: this.currentTrackingVesselId,
+                historyTrackAnimation: this.historyTrackAnimation ? this.historyTrackAnimation.vesselId : null
+            });
+
             // 添加按鈕點擊效果
-            const clickedButton = event.target;
-            clickedButton.classList.add('clicked');
-            setTimeout(() => {
-                clickedButton.classList.remove('clicked');
-            }, 600);
-            
+            try {
+                const clickedButton = event.target;
+                clickedButton.classList.add('clicked');
+                setTimeout(() => {
+                    clickedButton.classList.remove('clicked');
+                }, 600);
+            } catch (e) {
+                console.warn('⚠️ 無法添加按鈕點擊效果:', e.message);
+            }
+
             // 首先檢查是否有當前追蹤的船舶
             let targetVesselId = this.currentTrackingVesselId;
             console.log(`🚢 當前追蹤的船舶ID: ${targetVesselId}`);
-            
+
             // 如果沒有當前追蹤的船舶，嘗試從正在運行的歷史軌跡動畫中獲取
             if (!targetVesselId && this.historyTrackAnimation && this.historyTrackAnimation.vesselId) {
                 targetVesselId = this.historyTrackAnimation.vesselId;
                 console.log(`🔄 使用正在顯示歷史軌跡的船舶: ${targetVesselId}`);
             }
-            
+
             if (!targetVesselId) {
                 console.warn('⚠️ 目前沒有選中的船舶事件，無法跳轉到歷史軌跡點');
                 // 顯示用戶友好的提示
@@ -169,9 +197,16 @@
                 }
                 return;
             }
-            
+
             // 獲取當前船舶事件
+            console.log(`🔍 嘗試從 eventStorage 獲取事件，ID: ${targetVesselId}`);
+            console.log(`🔍 eventStorage 是否存在:`, typeof eventStorage);
             const vesselEvent = eventStorage.getEvent(targetVesselId);
+            console.log(`🔍 獲取到的 vesselEvent:`, vesselEvent);
+            if (vesselEvent) {
+                console.log(`🔍 vesselEvent.trackPoints 存在:`, !!vesselEvent.trackPoints);
+                console.log(`🔍 vesselEvent.trackPoints 長度:`, vesselEvent.trackPoints?.length);
+            }
             if (!vesselEvent || !vesselEvent.trackPoints || vesselEvent.trackPoints.length === 0) {
                 console.warn('⚠️ 船舶事件沒有歷史軌跡點資料');
                 if (typeof showUserMessage === 'function') {
@@ -218,16 +253,32 @@
          * @returns {Object|null} 座標物件或null
          */
         getCurrentVesselPosition(vesselEvent) {
-            try {
-                if (vesselEvent.coordinates) {
-                    const coords = parsePointCoordinates(vesselEvent.coordinates);
-                    return coords;
+            console.log(`🟢 [getCurrentVesselPosition] 被呼叫`);
+
+            // 方法1: 嘗試從 trackPoints 中找到 Current 點
+            if (vesselEvent.trackPoints && Array.isArray(vesselEvent.trackPoints)) {
+                const currentPoint = vesselEvent.trackPoints.find(p => p.type === 'Current');
+                if (currentPoint && currentPoint.lat && currentPoint.lon) {
+                    console.log(`✅ 從 trackPoints 找到 Current 點: (${currentPoint.lat}, ${currentPoint.lon})`);
+                    return { lat: currentPoint.lat, lon: currentPoint.lon };
                 }
-                return null;
-            } catch (error) {
-                console.warn('⚠️ 解析船舶座標時發生錯誤:', error);
-                return null;
             }
+
+            // 方法2: 嘗試解析 coordinates 欄位
+            if (vesselEvent.coordinates && typeof parsePointCoordinates === 'function') {
+                try {
+                    const coords = parsePointCoordinates(vesselEvent.coordinates);
+                    if (coords && coords.lat && coords.lon) {
+                        console.log(`✅ 從 coordinates 欄位解析座標: (${coords.lat}, ${coords.lon})`);
+                        return coords;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ 解析 coordinates 欄位失敗:', error);
+                }
+            }
+
+            console.warn('⚠️ 無法從任何來源獲取當前船舶位置');
+            return null;
         }
 
         /**

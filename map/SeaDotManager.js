@@ -27,38 +27,55 @@
                 // prefer helpers which already resolve display.*; fall back to display.* then legacy fields
                 const _getDotColor = helpers && typeof helpers.getDotColor === 'function' ? helpers.getDotColor : (p => ((p && p.display && p.display.dotColor) ? p.display.dotColor : (p && p.dotColor) || null));
                 const _getBackgroundColor = helpers && typeof helpers.getBackgroundColor === 'function' ? helpers.getBackgroundColor : (p => ((p && p.display && p.display.backgroundColor) ? p.display.backgroundColor : (p && p.backgroundColor) || (p && p.bgColor) || null));
-                // Prefer dotColor first, then backgroundColor. If point.type === 'Future' force yellow.
+                // ⚠️ 重要: type 檢查必須優先，避免被其他顏色覆蓋
                 let resolvedBackground;
-                if (typeof _getDotColor === 'function') resolvedBackground = _getDotColor(dotData) || null;
-                if (!resolvedBackground && typeof _getBackgroundColor === 'function') resolvedBackground = _getBackgroundColor(dotData) || null;
-                if (!resolvedBackground) {
-                    // Future points should be warm yellow
-                    resolvedBackground = (dotData && dotData.type === 'Future') ? '#FFD54A' : '#2196F3';
+
+                // 強制設定 Current 和 Future 的顏色
+                if (dotData && dotData.type === 'Current') {
+                    resolvedBackground = '#ef4444'; // 紅色
+                } else if (dotData && dotData.type === 'Future') {
+                    resolvedBackground = '#FFD54A'; // 黃色
+                } else {
+                    // 其他類型才使用 helper functions
+                    if (typeof _getDotColor === 'function') resolvedBackground = _getDotColor(dotData) || null;
+                    if (!resolvedBackground && typeof _getBackgroundColor === 'function') resolvedBackground = _getBackgroundColor(dotData) || null;
+                    if (!resolvedBackground) {
+                        resolvedBackground = '#2196F3'; // 藍色預設
+                    }
                 }
                 const resolvedDotColor = resolvedBackground;
             let iconAnchor = sizes.iconAnchor;
-            const isTrackPoint = dotData.type === 'History' || dotData.type === 'Current' || dotData.type === 'Future';
+            // ⚠️ 重要修正: Current 類型使用圓形樣式，History/Future 使用三角形
+            const isTriangleTrackPoint = dotData.type === 'History' || dotData.type === 'Future';
+            const isCurrentPoint = dotData.type === 'Current';
 
-            if (isTrackPoint) {
+            if (isTriangleTrackPoint) {
+                // History 和 Future 使用三角形
                 shapeStyle = `
                     width: 0;
                     height: 0;
                     border-left: ${sizes.width/2}px solid transparent;
                     border-right: ${sizes.width/2}px solid transparent;
-                        border-bottom: ${sizes.height}px solid ${resolvedBackground};
+                    border-bottom: ${sizes.height}px solid ${resolvedBackground};
                     border-radius: 0;
                     box-shadow: 0 2px 8px ${shadowColor};
                 `;
                 borderStyle = '';
                 iconAnchor = [sizes.iconSize[0]/2, sizes.iconSize[1] - 2];
             } else {
+                // Current 和其他類型使用圓形
+                const pulseAnimation = isCurrentPoint
+                    ? 'animation: pulse 2s ease-in-out infinite;'
+                    : '';
+
                 shapeStyle = `
-                        background: ${resolvedBackground}; 
+                    background: ${resolvedBackground};
                     ${borderStyle}
-                    border-radius: ${dotData.borderRadius}; 
-                    width: ${sizes.width}px; 
-                    height: ${sizes.height}px; 
+                    border-radius: ${dotData.borderRadius};
+                    width: ${sizes.width}px;
+                    height: ${sizes.height}px;
                     box-shadow: 0 0 15px ${shadowColor};
+                    ${pulseAnimation}
                 `;
             }
 
@@ -98,13 +115,19 @@
             let backgroundColor, dotColor, borderRadius;
             const isAbnormalSignal = this.checkSignalAbnormality(trackPointData || {});
 
-            // Force any Future-type point to be warm yellow and never allow
-            // abnormality logic to overwrite it. This guarantees consistent
-            // presentation for planned/future points used in demos.
-            if (type === 'Future') {
+            // ⚠️ 重要: type 檢查必須在最前面,避免被 display 或 trackPointData 的顏色覆蓋
+            // 當前位置 - 強制紅色
+            if (type === 'Current') {
+                backgroundColor = '#ef4444';
+                dotColor = '#ef4444';
+            }
+            // 未來位置 - 強制黃色
+            else if (type === 'Future') {
                 backgroundColor = '#FFD54A';
                 dotColor = '#FFD54A';
-            } else if (display && (display.backgroundColor || display.dotColor)) {
+            }
+            // 其他類型才檢查 display 和 trackPointData 的顏色設定
+            else if (display && (display.backgroundColor || display.dotColor)) {
                 // prefer display subobject when present
                 backgroundColor = display.backgroundColor || display.dotColor || '#2196F3';
                 dotColor = display.dotColor || display.backgroundColor || '#2196F3';
@@ -129,6 +152,8 @@
                 borderRadius = trackPointData.borderRadius;
             } else if (type === 'History') {
                 borderRadius = '2px';
+            } else if (type === 'Current') {
+                borderRadius = '50%'; // 當前位置用圓形
             } else {
                 borderRadius = '50%';
             }
@@ -274,8 +299,18 @@
                 const resolvedDotColor = (helpers && typeof helpers.getDotColor === 'function') ? (helpers.getDotColor(dotData) || dotData.dotColor) : dotData.dotColor;
                 let shadowColor = this.hexToRgba(resolvedDotColor, 0.6);
                 borderStyle = `border: 2px solid ${resolvedDotColor};`;
-            const sizes = { width: 14, height: 14, iconSize: [24, 24], iconAnchor: [12, 12] };
-            const trackIcon = this.createSeaDotIcon(dotData, sizes, shadowColor, borderStyle);
+
+            let trackIcon;
+
+            // Current 類型使用船舶 icon
+            if (dotData.type === 'Current') {
+                trackIcon = this.createShipIcon(dotData);
+            } else {
+                // 其他類型使用原本的圓點/三角形
+                const sizes = { width: 14, height: 14, iconSize: [24, 24], iconAnchor: [12, 12] };
+                trackIcon = this.createSeaDotIcon(dotData, sizes, shadowColor, borderStyle);
+            }
+
             const marker = L.marker([dotData.lat, dotData.lon], { icon: trackIcon });
             // Create popup content for track point
             const pointTime = new Date(dotData.trackPointData.timestamp);
@@ -302,6 +337,65 @@
                 });
             }
             return marker;
+        }
+
+        /**
+         * 創建船舶 icon（用於 Current 類型軌跡點）
+         */
+        createShipIcon(dotData) {
+            const shipSvg = `
+                <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="ship-glow">
+                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- 船體外框（白色背景） -->
+                    <ellipse cx="24" cy="28" rx="14" ry="8" fill="#ffffff" stroke="#2196F3" stroke-width="2"/>
+
+                    <!-- 船體主體 -->
+                    <ellipse cx="24" cy="28" rx="12" ry="6" fill="#2196F3"/>
+
+                    <!-- 上層建築（白色） -->
+                    <rect x="18" y="20" width="12" height="8" rx="1" fill="#ffffff" stroke="#2196F3" stroke-width="1.5"/>
+
+                    <!-- 駕駛台 -->
+                    <rect x="20" y="15" width="8" height="5" rx="1" fill="#ffffff" stroke="#2196F3" stroke-width="1.5"/>
+
+                    <!-- 煙囪 -->
+                    <rect x="22" y="11" width="4" height="4" fill="#2196F3" stroke="#ffffff" stroke-width="1"/>
+
+                    <!-- 窗戶 -->
+                    <circle cx="21" cy="17" r="1" fill="#2196F3"/>
+                    <circle cx="24" cy="17" r="1" fill="#2196F3"/>
+                    <circle cx="27" cy="17" r="1" fill="#2196F3"/>
+
+                    <!-- 船舷窗 -->
+                    <circle cx="20" cy="23" r="1" fill="#2196F3"/>
+                    <circle cx="24" cy="23" r="1" fill="#2196F3"/>
+                    <circle cx="28" cy="23" r="1" fill="#2196F3"/>
+
+                    <!-- 船頭波浪效果 -->
+                    <path d="M 10 28 Q 12 26, 14 28" stroke="#64B5F6" stroke-width="1.5" fill="none" opacity="0.6"/>
+                    <path d="M 34 28 Q 36 26, 38 28" stroke="#64B5F6" stroke-width="1.5" fill="none" opacity="0.6"/>
+                </svg>
+            `;
+
+            return L.divIcon({
+                html: `<div class="ship-icon-wrapper" style="
+                    animation: pulse 2s ease-in-out infinite;
+                    transform-origin: center center;
+                ">${shipSvg}</div>`,
+                className: 'custom-ship-marker',
+                iconSize: [48, 48],
+                iconAnchor: [24, 24],
+                popupAnchor: [0, -24]
+            });
         }
 
         createMarker(dotData, map = taiwanMap) {
@@ -1002,6 +1096,34 @@
             }
 
             return false;
+        }
+
+        /**
+         * 更新 RF 信號點的彈窗內容
+         * @param {string} rfId - RF 信號 ID
+         * @returns {boolean} 是否成功更新
+         */
+        updateRFSignalPopup(rfId) {
+            if (!rfId) {
+                console.warn('⚠️ 未提供 RF ID');
+                return false;
+            }
+
+            const dotData = this.getDotByRFId(rfId);
+            if (!dotData) {
+                console.warn(`⚠️ 找不到 RF ID "${rfId}" 對應的信號點`);
+                return false;
+            }
+
+            // 更新彈窗內容（使用 popups.js 中的函數）
+            if (dotData.marker && window.popups && typeof window.popups.updateRFSignalPopupContent === 'function') {
+                window.popups.updateRFSignalPopupContent(dotData.marker, dotData);
+                console.log(`✅ 已更新 RF 信號 ${rfId} 的彈窗內容`);
+                return true;
+            } else {
+                console.warn(`⚠️ 無法更新彈窗內容：marker 或 popups.updateRFSignalPopupContent 不可用`);
+                return false;
+            }
         }
     }
 
