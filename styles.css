@@ -387,6 +387,16 @@ body {
     box-shadow: 0 2px 8px rgba(0, 102, 204, 0.4);
 }
 
+.satellite-image-on-map {
+    background: transparent;
+    border: none;
+}
+
+.satellite-image-on-map {
+    background: transparent;
+    border: none;
+}
+
 /* 地圖控制按鈕通用樣式 */
 .map-control-btn {
     position: absolute;
@@ -992,236 +1002,121 @@ body {
     transform: scale(1.02);
 }
 
-/* 右側横向時間軸 */
+/* 右側任務卡片列表 */
 .mission-timeline {
     position: relative;
     overflow-x: auto;
-    padding: 20px 0;
+    padding: 10px 0;
 }
 
 .timeline-container {
     position: relative;
     display: flex;
     align-items: center;
-    min-width: 600px;
+    gap: 15px; /* Spacing between cards */
     width: 100%;
     height: 120px;
+    overflow-x: auto; /* Allow horizontal scrolling */
+    padding: 10px;
 }
 
-.timeline-line {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #00d4ff, rgba(0, 212, 255, 0.3));
-    transform: translateY(-1px);
+/* Hide scrollbar */
+.timeline-container::-webkit-scrollbar {
+    height: 8px;
+}
+.timeline-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+.timeline-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+.timeline-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
-.timeline-item {
-    position: relative;
+
+.task-card {
+    flex-shrink: 0; /* Prevent cards from shrinking */
+    width: 180px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    margin-right: 80px;
-    min-width: 120px;
-}
-
-.timeline-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #00d4ff;
-    border: 3px solid rgba(0, 0, 0, 0.3);
-    z-index: 2;
-    margin-bottom: 8px;
-}
-
-/* 建立時間節點 - 藍色 */
-.timeline-dot.create-dot {
-    background: #3b82f6;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
-}
-
-/* 警示時間節點 - 紅色 + 脈動動畫 */
-.timeline-dot.alert-dot {
-    background: #ef4444;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
-    animation: pulse 2s infinite;
-}
-
-/* 任務時間節點 - 綠色 */
-.timeline-dot.task-dot {
-    background: #10b981;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
-}
-
-/* 脈動動畫 */
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.6;
-        transform: scale(1.1);
-    }
-}
-
-.timeline-dot-task {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #ffa500;
-    border: 3px solid rgba(0, 0, 0, 0.3);
-    z-index: 2;
-    margin-bottom: 8px;
-    box-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
-}
-
-.timeline-dot-completed {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #10b981;
-    border: 3px solid rgba(0, 0, 0, 0.3);
-    z-index: 2;
-    margin-bottom: 8px;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
-}
-
-.timeline-dot-scheduled {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #f59e0b;
-    border: 3px solid rgba(0, 0, 0, 0.3);
-    z-index: 2;
-    margin-bottom: 8px;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
-}
-
-/* 軌跡點詳情彈窗 */
-.track-point-details {
-    padding: 20px 0;
-}
-
-.location-info, .task-info-section {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.location-info h4, .task-info-section h4 {
-    color: #00d4ff;
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.detail-row, .task-detail-row {
-    display: flex;
     justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.detail-row:last-child, .task-detail-row:last-child {
-    border-bottom: none;
-}
-
-.detail-row span:first-child, .task-detail-row span:first-child {
-    color: #b8c5d1;
-    font-weight: 500;
-}
-
-.detail-row span:last-child, .task-detail-row span:last-child {
-    color: #ffffff;
-    text-align: right;
-    max-width: 60%;
-    word-wrap: break-word;
-}
-
-.task-status-completed {
-    color: #10b981 !important;
-    font-weight: bold;
-}
-
-.task-status-scheduled {
-    color: #f59e0b !important;
-    font-weight: bold;
-}
-
-.no-task-info {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-    color: #b8c5d1;
-    font-style: italic;
-}
-
-.timeline-time {
-    position: absolute;
-    top: -25px;
-    color: #00d4ff;
-    font-size: 11px;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.timeline-content {
-    text-align: center;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    padding: 8px;
-    border: 1px solid rgba(0, 212, 255, 0.2);
-}
-
-.timeline-title {
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: bold;
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100px;
-}
-
-.timeline-desc {
-    color: #b8c5d1;
-    font-size: 10px;
-    white-space: nowrap;
-}
-
-.timeline-item {
+    cursor: pointer;
     transition: all 0.3s ease;
 }
 
-.timeline-item:hover {
-    transform: translateY(-2px);
+.task-card:hover {
+    transform: translateY(-3px);
+    border-color: #00d4ff;
+    box-shadow: 0 6px 15px rgba(0, 212, 255, 0.2);
 }
 
-.timeline-item:hover .timeline-dot {
-    background: #ffffff;
-    box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+.task-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.timeline-item.highlighted {
-    transform: scale(1.05);
+.task-card-icon {
+    font-size: 20px;
 }
 
-.timeline-item.highlighted .timeline-content {
-    border: 2px solid #00d4ff;
-    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+.task-card-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.timeline-item.highlighted .timeline-dot {
-    background: #ffffff;
-    box-shadow: 0 0 15px rgba(0, 212, 255, 1);
-    transform: scale(1.3);
+.task-card-body {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.task-card-status {
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.no-tasks-message {
+    color: #64748b;
+    font-size: 14px;
+    width: 100%;
+    text-align: center;
+}
+
+/* Status colors for task cards */
+.task-card-status.status-completed {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+.task-card-status.status-executing {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+.task-card-status.status-dispatched {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+.task-card-status.status-scheduled {
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+}
+.task-card-status.status-unknown {
+    background: rgba(100, 116, 139, 0.2);
+    color: #94a3b8;
 }
 
 .mission-filter {
@@ -1561,6 +1456,64 @@ body {
         box-shadow: 0 0 15px rgba(102, 231, 255, 0.6);
         transform: scale(1);
         opacity: 0.9;
+    }
+}
+
+/* 🆕 高威脅RF信號點呼吸特效 (威脅分數 > 80) - 加強版 */
+@keyframes high-threat-breathing {
+    0% {
+        box-shadow: 
+            0 0 20px rgba(239, 68, 68, 0.9),
+            0 0 40px rgba(239, 68, 68, 0.7),
+            0 0 60px rgba(239, 68, 68, 0.5),
+            0 0 80px rgba(239, 68, 68, 0.3);
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1.2);
+    }
+    25% {
+        box-shadow: 
+            0 0 30px rgba(239, 68, 68, 1),
+            0 0 60px rgba(239, 68, 68, 0.9),
+            0 0 90px rgba(239, 68, 68, 0.7),
+            0 0 120px rgba(239, 68, 68, 0.5),
+            0 0 150px rgba(239, 68, 68, 0.3);
+        transform: scale(1.25);
+        opacity: 0.95;
+        filter: brightness(1.5);
+    }
+    50% {
+        box-shadow: 
+            0 0 35px rgba(239, 68, 68, 1),
+            0 0 70px rgba(239, 68, 68, 0.95),
+            0 0 105px rgba(239, 68, 68, 0.8),
+            0 0 140px rgba(239, 68, 68, 0.6),
+            0 0 175px rgba(239, 68, 68, 0.4),
+            0 0 210px rgba(239, 68, 68, 0.2);
+        transform: scale(1.3);
+        opacity: 0.9;
+        filter: brightness(1.6) saturate(1.3);
+    }
+    75% {
+        box-shadow: 
+            0 0 30px rgba(239, 68, 68, 1),
+            0 0 60px rgba(239, 68, 68, 0.9),
+            0 0 90px rgba(239, 68, 68, 0.7),
+            0 0 120px rgba(239, 68, 68, 0.5),
+            0 0 150px rgba(239, 68, 68, 0.3);
+        transform: scale(1.25);
+        opacity: 0.95;
+        filter: brightness(1.5);
+    }
+    100% {
+        box-shadow: 
+            0 0 20px rgba(239, 68, 68, 0.9),
+            0 0 40px rgba(239, 68, 68, 0.7),
+            0 0 60px rgba(239, 68, 68, 0.5),
+            0 0 80px rgba(239, 68, 68, 0.3);
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1.2);
     }
 }
 
@@ -2584,7 +2537,20 @@ body {
   z-index: 9999;
   cursor: pointer;
   animation: slideInRight 0.3s ease-out;
-  min-width: 280px;
+  min-width: 300px;
+  max-width: 400px;
+  transition: all 0.3s ease;
+}
+
+/* 區域監控事件專用通知樣式（藍色系） */
+.threat-notification.area-event-notification {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+  border-left: 4px solid #60a5fa;
+}
+
+.threat-notification.area-event-notification:hover {
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
 }
 
 .threat-notification:hover {
@@ -2598,7 +2564,7 @@ body {
 
 @keyframes slideInRight {
   from {
-    transform: translateX(400px);
+    transform: translateX(450px);
     opacity: 0;
   }
   to {
@@ -2613,28 +2579,54 @@ body {
     opacity: 1;
   }
   to {
-    transform: translateX(400px);
+    transform: translateX(450px);
     opacity: 0;
   }
 }
 
 .notification-icon {
   font-size: 24px;
+  flex-shrink: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .notification-content {
   flex: 1;
+  min-width: 0; /* 允許文字截斷 */
 }
 
 .notification-title {
   font-size: 14px;
   font-weight: bold;
   margin-bottom: 4px;
+  letter-spacing: 0.5px;
 }
 
 .notification-text {
   font-size: 12px;
   opacity: 0.9;
+  line-height: 1.4;
+}
+
+.notification-close {
+  font-size: 18px;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0 5px;
+  transition: opacity 0.2s;
+}
+
+.notification-close:hover {
+  opacity: 1;
 }
 
 /* 事件卡警示動畫 */

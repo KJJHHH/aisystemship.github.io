@@ -102,7 +102,7 @@
         pulses_duration_ns: 125,
         pulses_repetition_frequency_hz: 850,
         waveform: '脈衝波',
-        trackPoints: this.generateSimulatedTrackPoints('cargo')
+        trackPoints: this.generateSimulatedTrackPoints('cargo', 'vessel-003')
       });
 
       this.events.set('vessel-004', {
@@ -128,7 +128,7 @@
         pulses_duration_ns: 95,
         pulses_repetition_frequency_hz: 620,
         waveform: '正弦波',
-        trackPoints: this.generateSimulatedTrackPoints('fishing')
+        trackPoints: this.generateSimulatedTrackPoints('fishing', 'vessel-004')
       });
     }
 
@@ -264,8 +264,8 @@
       // 強制設定 vessel-003 和 vessel-004 的 AIS 狀態為「未開啟」
       let aisStatus = '未開啟';
       
-      // 根據 AIS 未開啟狀態設定威脅分數
-      let threatScore = existingVesselEvent.threatScore || 75;
+      // 設定威脅分數
+      let threatScore = existingVesselEvent.threatScore
       
       if (eventid === 'vessel-003') {
         threatScore = 85; // 保持高威脅分數
@@ -407,11 +407,19 @@
         };
 
         // 通過統一管理器創建軌跡點
+        let registeredPointId = null;
         if (window.missionTrackManager) {
-          window.missionTrackManager.createTrackPoint(trackPoint);
+          registeredPointId = window.missionTrackManager.createTrackPoint(trackPoint);
+          // 使用註冊後的標準化對象，而不是原始對象
+          const registeredPoint = window.missionTrackManager.trackPoints.get(registeredPointId);
+          if (registeredPoint) {
+            trackPoints.unshift(registeredPoint);
+          } else {
+            trackPoints.unshift(trackPoint); // fallback
+          }
+        } else {
+          trackPoints.unshift(trackPoint);
         }
-
-        trackPoints.unshift(trackPoint);
         previousPoint = { lat: newLat, lon: newLon };
       }
 
@@ -435,10 +443,16 @@
 
       // 通過統一管理器創建軌跡點
       if (window.missionTrackManager) {
-        window.missionTrackManager.createTrackPoint(currentPoint);
+        const currentPointId = window.missionTrackManager.createTrackPoint(currentPoint);
+        const registeredCurrentPoint = window.missionTrackManager.trackPoints.get(currentPointId);
+        if (registeredCurrentPoint) {
+          trackPoints.push(registeredCurrentPoint);
+        } else {
+          trackPoints.push(currentPoint); // fallback
+        }
+      } else {
+        trackPoints.push(currentPoint);
       }
-
-      trackPoints.push(currentPoint);
 
       // 生成未來點（往未來時間推算）
       previousPoint = { lat: endLat, lon: endLon };
@@ -472,10 +486,16 @@
 
         // 通過統一管理器創建軌跡點
         if (window.missionTrackManager) {
-          window.missionTrackManager.createTrackPoint(trackPoint);
+          const futurePointId = window.missionTrackManager.createTrackPoint(trackPoint);
+          const registeredFuturePoint = window.missionTrackManager.trackPoints.get(futurePointId);
+          if (registeredFuturePoint) {
+            trackPoints.push(registeredFuturePoint);
+          } else {
+            trackPoints.push(trackPoint); // fallback
+          }
+        } else {
+          trackPoints.push(trackPoint);
         }
-
-        trackPoints.push(trackPoint);
         previousPoint = { lat: newLat, lon: newLon };
       }
 
@@ -484,92 +504,94 @@
       // 為軌跡點中的任務創建對應的任務卡片
       this.generateMissionCardsFromTrackPoints(trackPoints, eventId);
 
+      console.log(`[DEPRECATED] generateFixedTrackPoints is deprecated. Use trackPointGenerator instead.`);
       return trackPoints;
     }
 
-    // 為軌跡點中的任務生成對應的任務卡片
+    /**
+     * @deprecated This function is deprecated. It creates duplicate, unmanaged missions and should not be used.
+     * Mission creation should be handled by a dedicated mission manager, not as a side effect of data generation.
+     * This function is kept for historical reference but its core logic is disabled.
+     */
     generateMissionCardsFromTrackPoints(trackPoints, eventId) {
+      const taskTypes = [
+          { action: 'satellite', name: '衛星重拍', icon: '🛰️' },
+          { action: 'uav', name: 'UAV派遣', icon: '🚁' },
+          { action: 'notify', name: '通知單位', icon: '📞' },
+          { action: 'track', name: '持續追蹤', icon: '🎯' }
+      ];
+
+      let missionsCreatedForThisVessel = 0;
+
+      // 🔴 BUG FIX: The mission creation logic below is flawed and has been disabled.
+      // This function should not be responsible for creating missions.
       trackPoints.forEach(point => {
-        // Include Future points by default (treat as scheduled tasks) or any point that explicitly has a task
-        if (point.type === 'Future' || (point.hasTask && point.taskType)) {
-          // 將軌跡點任務類型映射到標準行動類型
-          let actionType, missionType, actionIcon;
+        /*
+        const randomTask = taskTypes[Math.floor(Math.random() * taskTypes.length)];
 
-          switch (point.taskType) {
-            case '監控任務':
-            case '追蹤任務':
-            case '當前監控':
-              actionType = 'track';
-              missionType = '持續追蹤';
-              actionIcon = '🎯';
-              break;
-            case '預定追蹤':
-              actionType = 'track';
-              missionType = '持續追蹤';
-              actionIcon = '🎯';
-              break;
-            case '巡查任務':
-              actionType = 'uav';
-              missionType = 'UAV 派遣';
-              actionIcon = '🚁';
-              break;
-            case '異常調查':
-              actionType = 'satellite';
-              missionType = '衛星重拍';
-              actionIcon = '🛰️';
-              break;
-            default:
-              actionType = 'track';
-              missionType = '持續追蹤';
-              actionIcon = '🎯';
-          }
+        // Determine mission status based on track point type
+        let missionStatus;
+        const pointTime = new Date(point.timestamp);
 
-          // 確定任務狀態
-          let missionStatus, executionTime;
-          const pointTime = new Date(point.timestamp);
-          const currentTime = new Date();
+        if (point.type === 'History') {
+          missionStatus = 'completed';
+        } else if (point.type === 'Current') {
+          missionStatus = 'executing';
+        } else { // Future
+          missionStatus = 'scheduled';
+        }
 
-          if (point.type === 'History') {
-            missionStatus = '已完成';
-            executionTime = pointTime;
-          } else if (point.type === 'Current') {
-            missionStatus = '執行任務';
-            executionTime = pointTime;
-          } else { // Future
-            missionStatus = '派遣';
-            executionTime = pointTime;
-          }
+        // 使用標準化後的 pointId
+        const sourcePointId = point.pointId || point.id;
 
-          // 創建任務資料
-          const missionData = {
-            action: actionType,
-            type: missionType,
-            actionName: missionType,
-            actionIcon: actionIcon,
-            target: eventId.toUpperCase(),
-            targetInfo: eventId.toUpperCase(),
-            targetVesselId: eventId,
-            status: missionStatus,
-            startTime: executionTime,
-            scheduledTime: point.type === 'Future' ? executionTime : null,
-            completedTime: point.type === 'History' ? executionTime : null,
-            description: point.taskDescription || `執行${missionType}任務`,
-            progress: point.type === 'History' ? 100 :
-                     point.type === 'Current' ? 75 :
-                     point.type === 'Future' ? 15 : 0,
-            estimatedCompletion: point.type !== 'History' ? this.formatEstimatedCompletion(executionTime) : null,
-            isScheduled: point.type === 'Future',
-            sourceTrackPointId: (typeof getSafePointId === 'function') ? getSafePointId(point) : point.id  // 標記來源軌跡點的穩定 id
-          };
+        // Create mission data, preserving the link to the track point
+        const missionData = {
+          action: randomTask.action,
+          actionName: randomTask.name,
+          actionIcon: randomTask.icon,
+          target: eventId.toUpperCase(),
+          targetInfo: eventId.toUpperCase(),
+          targetVesselId: eventId,
+          status: missionStatus,
+          timestamp: pointTime.toISOString(),
+          description: point.taskDescription || `執行${randomTask.name}任務`,
+          sourceTrackPointId: sourcePointId
+        };
 
-          // 通過統一管理器創建任務（會自動建立與軌跡點的連結）
-          if (window.missionTrackManager) {
-            const missionId = window.missionTrackManager.createMission(missionData);
+        /* 🔴 BUGGY CODE DISABLED
+        if (window.missionTrackManager) {
+          window.missionTrackManager.createMission(missionData);
+        }
+        */
 
-            // 創建任務卡片顯示在任務列表中
-            this.createMissionCard(missionId, missionData);
+        missionsCreatedForThisVessel++;
+      });
 
-            console.log(`✅ 為軌跡點 ${point.id} 創建了對應的任務卡片: ${missionId} (${missionType})`);
+      console.warn(`[BUG] generateMissionCardsFromTrackPoints attempted to create ${missionsCreatedForThisVessel} duplicate missions for vessel ${eventId}. This has been temporarily disabled.`);
+      
+      // This function now only creates the mission data in the manager.
+      // The UI is responsible for fetching and rendering the cards.
+      console.log(`Created ${missionsCreatedForThisVessel} mock missions for vessel ${eventId}.`);
+
+      // 調試：驗證綁定結果
+      console.log(`🔍 [調試] Vessel ${eventId} 綁定驗證:`);
+      trackPoints.forEach((point, idx) => {
+        if (point.hasTask) {
+          const pointId = point.pointId || point.id;
+          const storedPoint = window.missionTrackManager?.trackPoints.get(pointId);
+          if (storedPoint) {
+            console.log(`  軌跡點 ${idx}: ${pointId}`);
+            console.log(`    boundMissionIds: [${storedPoint.boundMissionIds.join(', ')}]`);
+            if (storedPoint.boundMissionIds.length > 0) {
+              storedPoint.boundMissionIds.forEach(mId => {
+                const mission = window.missionTrackManager.missions.get(mId);
+                if (mission) {
+                  console.log(`    → 任務: ${mId} (${mission.actionName}, ${mission.status})`);
+                }
+              });
+            }
+          } else {
+            console.warn(`  ⚠️ 軌跡點 ${idx} (${pointId}) 不在 trackPoints Map 中！`);
           }
         }
       });
@@ -656,7 +678,7 @@
      * @deprecated 請使用 window.trackPointGenerator.generateTrackPoints() 替代
      * 此方法保留用於向後兼容
      */
-    generateSimulatedTrackPoints(shiptype) {
+    generateSimulatedTrackPoints(shiptype, eventId) {
       // 如果新的 Generator 可用，使用它
       if (window.trackPointGenerator) {
         const vessel = { vesselType: shiptype === 'fishing' ? '漁船' : '貨輪' };
@@ -808,6 +830,7 @@
             taskType: willBeAbnormal ?
               ['異常調查', '衛星重拍', '威脅評估'][Math.floor(Math.random() * 3)] :
               ['監控任務', '追蹤任務', '偵察任務'][Math.floor(Math.random() * 3)],
+            vesselId: eventId, // 核心修正：將 eventId 賦予軌跡點
             taskDescription: willBeAbnormal ?
               '處理異常行為和信號異常事件' :
               '執行船舶追蹤和行為分析'
@@ -821,8 +844,19 @@
           // 為軌跡點創建對應的派遣任務
           const missionTypes = ['UAV 派遣', '衛星重拍', '持續追蹤', '聯繫船隻'];
           const missionType = missionTypes[Math.floor(Math.random() * missionTypes.length)];
+          
+          // 定義任務圖示映射
+          const actionIcons = {
+            'UAV 派遣': '🚁',
+            '衛星重拍': '🛰️',
+            '持續追蹤': '🎯',
+            '聯繫船隻': '📞'
+          };
+          
           const missionData = {
             type: missionType,
+            actionName: missionType, // 添加 actionName 字段以供 popup 使用
+            actionIcon: actionIcons[missionType] || '❓', // 添加 actionIcon 字段
             action: missionType === 'UAV 派遣' ? 'uav' :
                    missionType === '衛星重拍' ? 'satellite' :
                    missionType === '聯繫船隻' ? 'notify' : 'track',
@@ -834,19 +868,12 @@
             description: `${missionType}任務 - 監控目標船隻活動`,
             estimatedCompletion: trackPoint.type !== 'History' ?
               new Date(Date.now() + 2 * 60 * 60 * 1000).toLocaleTimeString('zh-TW', {hour12: false}) : null,
-            sourceTrackPointId: trackPoint.id
+            sourceTrackPointId: trackPoint.id,
+            targetVesselId: eventId // 核心修正：確保任務與船舶ID關聯
           };
 
           if (window.missionTrackManager) {
-            const missionId = window.missionTrackManager.createMission(missionData);
-
-            // 建立軌跡點與任務的雙向連結
-            const managedPoint = window.missionTrackManager.trackPoints.get(trackPoint.id);
-            const managedMission = window.missionTrackManager.missions.get(missionId);
-            if (managedPoint && managedMission) {
-              managedPoint.boundMissionId = missionId;
-              managedMission.boundPointId = trackPoint.id;
-            }
+            window.missionTrackManager.createMission(missionData);
           }
 
           trackData.push(trackPoint);
@@ -871,7 +898,8 @@
           course: 45 + Math.random() * 90,
           reportTime: timestamp.toLocaleTimeString('zh-TW', {hour12: false}),
           taskType: ['監控任務', '追蹤任務', '偵察任務'][Math.floor(Math.random() * 3)],
-          taskDescription: '執行船舶追蹤和行為分析'
+          taskDescription: '執行船舶追蹤和行為分析',
+          vesselId: eventId // 核心修正：將 eventId 賦予軌跡點
         };
 
         // 通過統一管理器創建軌跡點
@@ -882,8 +910,19 @@
         // 為未來軌跡點創建對應的派遣任務
         const futureMissionTypes = ['UAV 派遣', '衛星重拍', '持續追蹤', '聯繫船隻'];
         const futureMissionType = futureMissionTypes[Math.floor(Math.random() * futureMissionTypes.length)];
+        
+        // 定義任務圖示映射
+        const futureActionIcons = {
+          'UAV 派遣': '🚁',
+          '衛星重拍': '🛰️',
+          '持續追蹤': '🎯',
+          '聯繫船隻': '📞'
+        };
+        
         const futureMissionData = {
           type: futureMissionType,
+          actionName: futureMissionType, // 添加 actionName 字段以供 popup 使用
+          actionIcon: futureActionIcons[futureMissionType] || '❓', // 添加 actionIcon 字段
           action: futureMissionType === 'UAV 派遣' ? 'uav' :
                  futureMissionType === '衛星重拍' ? 'satellite' :
                  futureMissionType === '聯繫船隻' ? 'notify' : 'track',
@@ -893,19 +932,12 @@
           description: `${futureMissionType}任務 - 預定監控目標船隻活動`,
           estimatedCompletion: new Date(timestamp.getTime() + 2 * 60 * 60 * 1000).toLocaleTimeString('zh-TW', {hour12: false}),
           sourceTrackPointId: futureTrackPoint.id,
-          scheduledTime: timestamp.toISOString()
+          scheduledTime: timestamp.toISOString(),
+          targetVesselId: eventId // 核心修正：確保任務與船舶ID關聯
         };
 
         if (window.missionTrackManager) {
-          const futureMissionId = window.missionTrackManager.createMission(futureMissionData);
-
-          // 建立軌跡點與任務的雙向連結
-          const managedFuturePoint = window.missionTrackManager.trackPoints.get(futureTrackPoint.id);
-          const managedFutureMission = window.missionTrackManager.missions.get(futureMissionId);
-          if (managedFuturePoint && managedFutureMission) {
-            managedFuturePoint.boundMissionId = futureMissionId;
-            managedFutureMission.boundPointId = futureTrackPoint.id;
-          }
+          window.missionTrackManager.createMission(futureMissionData);
         }
 
         trackData.push(futureTrackPoint);

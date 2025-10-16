@@ -595,6 +595,31 @@
                         dotData.originalColor = dotData.dotColor || '#2196F3';
                     }
 
+                    // 🆕 為沒有威脅分數的RF信號點初始化威脅分數
+                    if (dotData.threatScore === undefined || dotData.threatScore === null) {
+                        // 構建trackPoint數據結構用於威脅評估
+                        const trackPointData = {
+                            lat: dotData.lat,
+                            lon: dotData.lon,
+                            status: dotData.status, // 'No AIS'
+                            timestamp: dotData.timestamp || new Date().toISOString(),
+                            type: 'Normal'
+                        };
+
+                        // 使用威脅評估系統計算威脅分數
+                        if (typeof assessThreatLevel === 'function') {
+                            const threatAssessment = assessThreatLevel(trackPointData, []);
+                            dotData.threatScore = threatAssessment.score;
+                            dotData.threatLevel = threatAssessment.level;
+                            dotData.threatFactors = threatAssessment.factors;
+                            console.log(`🎯 為RF信號 ${dotData.rfId} 初始化威脅分數: ${dotData.threatScore} (${threatAssessment.level.name})`);
+                        } else {
+                            // 如果威脅評估函數不可用，使用簡單的範圍生成 (60-90)
+                            dotData.threatScore = Math.floor(Math.random() * 31) + 60;
+                            console.log(`🎲 為RF信號 ${dotData.rfId} 生成隨機威脅分數: ${dotData.threatScore}`);
+                        }
+                    }
+
                     // 檢查此 RF 信號是否已建立船舶追蹤事件
                     let hasVesselEvent = false;
                     if (window.eventStorage && dotData.rfId) {
@@ -608,10 +633,19 @@
                     if (hasVesselEvent) {
                         dotData.dotColor = '#fbbf24'; // 黃色 - 表示正在追蹤
                         dotData.isTracked = true; // 標記為正在追蹤
+                        dotData.isHighThreat = false; // 追蹤中的信號不標記為高威脅
                         console.log(`🟡 RF 信號 ${dotData.rfId} 已列入船舶追蹤，標記為黃色`);
                     } else {
                         dotData.dotColor = '#ef4444'; // 紅色 - 異常但未追蹤
                         dotData.isTracked = false;
+                        
+                        // 🆕 標記高威脅信號點 (threatScore > 80)
+                        if (dotData.threatScore > 80) {
+                            dotData.isHighThreat = true;
+                            console.log(`🚨 檢測到高威脅RF信號 ${dotData.rfId}，威脅分數: ${dotData.threatScore}`);
+                        } else {
+                            dotData.isHighThreat = false;
+                        }
                     }
                     
                     dotData.isHighlighted = true;
@@ -665,7 +699,131 @@
             }
 
             console.log(`🔴 已清除非軌跡點並高亮顯示 ${highlightedCount} 個區域內的異常RF信號點`);
+            
+            // 🆕 延遲應用高威脅信號點的呼吸特效（確保標記渲染完成）
+            setTimeout(() => {
+                this.applyHighThreatBreathingEffect(areaEvent);
+            }, 500); // 延遲 500ms 確保地圖標記已渲染
+            
             return highlightedCount;
+        }
+        
+        /**
+         * 🆕 為區域內的高威脅RF信號點應用呼吸特效
+         * @param {Object} areaEvent - 區域事件資料
+         */
+        applyHighThreatBreathingEffect(areaEvent) {
+            if (!areaEvent || areaEvent.type !== 'area') {
+                return;
+            }
+
+            const centerLat = areaEvent.centerLatDirection === 'S' ? -areaEvent.centerLat : areaEvent.centerLat;
+            const centerLon = areaEvent.centerLonDirection === 'W' ? -areaEvent.centerLon : areaEvent.centerLon;
+            const radiusInKm = areaEvent.radiusInKm || areaEvent.radius;
+
+            let effectAppliedCount = 0;
+
+            this.seaDots.forEach((dotData, dotId) => {
+                // 計算距離
+                const R = 6371; // 地球半徑（公里）
+                const dLat = (dotData.lat - centerLat) * Math.PI / 180;
+                const dLon = (dotData.lon - centerLon) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(centerLat * Math.PI / 180) * Math.cos(dotData.lat * Math.PI / 180) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+
+                const isInArea = distance <= radiusInKm;
+                const isAbnormal = dotData.status === "No AIS";
+                const isHighThreat = dotData.threatScore > 80;
+
+                // 為區域內的高威脅異常信號點應用呼吸特效
+                if (isInArea && isAbnormal && isHighThreat && !dotData.isTracked) {
+                    dotData.isHighThreat = true;
+                    
+                    // 更新標記顏色和特效
+                    if (dotData.marker && taiwanMap) {
+                        this.updateDotMarkerColor(dotData);
+                        effectAppliedCount++;
+                    }
+                }
+            });
+
+            if (effectAppliedCount > 0) {
+                console.log(`✨ 已為 ${effectAppliedCount} 個高威脅RF信號點應用呼吸特效`);
+            }
+        }
+
+        /**
+         * 🆕 移除所有高威脅RF信號點的呼吸特效（但保留威脅狀態屬性）
+         * 用於地圖重置時清除視覺特效，同時保持信號點的威脅評級資料
+         */
+        removeAllHighThreatBreathingEffects() {
+            let effectRemovedCount = 0;
+            const dotsToUpdate = [];
+
+            // 第一階段：收集需要更新的信號點並設置標記
+            this.seaDots.forEach((dotData, dotId) => {
+                // 檢查是否為高威脅信號點（有呼吸特效）
+                if (dotData.isHighThreat && dotData.marker && taiwanMap) {
+                    // ⚠️ 重要：僅移除視覺特效標記，不修改 threatScore 或其他威脅屬性
+                    // 保留 dotData.threatScore - 威脅分數
+                    // 保留 dotData.dotColor - 顏色狀態
+                    // 保留其他所有狀態屬性
+                    
+                    // 移除呼吸特效標記
+                    dotData.isHighThreat = false;
+                    
+                    // 收集待更新的信號點
+                    dotsToUpdate.push(dotData);
+                    effectRemovedCount++;
+                    
+                    console.log(`🔄 已移除 RF 信號 ${dotData.rfId} 的呼吸特效 (威脅分數: ${dotData.threatScore} 保持不變)`);
+                }
+            });
+
+            // 🆕 同時更新 hiddenSignalPoints 中的數據（如果存在）
+            // 這確保當信號點被恢復時，不會重新添加呼吸特效
+            if (typeof window !== 'undefined' && window.hiddenSignalPoints && window.hiddenSignalPoints.seaDots) {
+                window.hiddenSignalPoints.seaDots.forEach((hiddenDotData, dotId) => {
+                    if (hiddenDotData.isHighThreat) {
+                        hiddenDotData.isHighThreat = false;
+                        console.log(`🔄 同步移除隱藏點 ${hiddenDotData.rfId} 的呼吸特效標記`);
+                    }
+                });
+            }
+
+            // 第二階段：批次更新所有標記（確保狀態已設置）
+            if (dotsToUpdate.length > 0) {
+                // 使用 requestAnimationFrame 確保在下一個渲染週期更新
+                requestAnimationFrame(() => {
+                    dotsToUpdate.forEach(dotData => {
+                        try {
+                            // 強制更新標記樣式（移除呼吸動畫但保持原色）
+                            this.updateDotMarkerColor(dotData);
+                            
+                            // 額外確保：直接操作 DOM 元素移除動畫
+                            if (dotData.marker && dotData.marker._icon) {
+                                const iconElement = dotData.marker._icon.querySelector('.sea-dot-inner');
+                                if (iconElement) {
+                                    // 移除動畫樣式
+                                    iconElement.style.animation = 'none';
+                                    console.log(`🎨 已直接移除 ${dotData.rfId} 的 DOM 動畫屬性`);
+                                }
+                            }
+                        } catch (error) {
+                            console.warn(`⚠️ 更新 ${dotData.rfId} 時發生錯誤:`, error);
+                        }
+                    });
+                    
+                    console.log(`✅ 已完成 ${dotsToUpdate.length} 個高威脅RF信號點的呼吸特效移除（威脅狀態屬性已保留）`);
+                });
+            } else {
+                console.log(`ℹ️ 目前沒有需要移除呼吸特效的高威脅信號點`);
+            }
+
+            return effectRemovedCount;
         }
 
         /**
@@ -730,15 +888,87 @@
                     borderStyle = `border: 2px solid ${udColor};`;
                 }
                 
+                // 🆕 檢查是否為高威脅信號點 (只依賴 isHighThreat 標記)
+                // ⚠️ 重要：只使用 isHighThreat 標記，不再自動判斷 threatScore 和 dotColor
+                // 這樣可以確保當我們手動設置 isHighThreat = false 時，呼吸特效會被移除
+                const isHighThreat = dotData.isHighThreat === true;
+                
+                // 🆕 為高威脅信號點添加呼吸特效動畫
+                const breathingAnimation = isHighThreat 
+                    ? 'animation: high-threat-breathing 2s ease-in-out infinite;' 
+                    : '';
+                
                 // 創建新的圖示
-                const newIcon = this.createSeaDotIcon(dotData, sizes, shadowColor, borderStyle);
+                const newIcon = this.createSeaDotIconWithAnimation(
+                    dotData, 
+                    sizes, 
+                    shadowColor, 
+                    borderStyle,
+                    breathingAnimation
+                );
                 
                 // 設置新圖示
                 dotData.marker.setIcon(newIcon);
                 
+                // 🆕 記錄高威脅信號點的特效應用/移除
+                if (isHighThreat) {
+                    console.log(`🚨 已為高威脅RF信號 ${dotData.rfId} 添加呼吸特效 (威脅分數: ${dotData.threatScore})`);
+                } else if (dotData.threatScore > 80) {
+                    console.log(`✅ 高威脅RF信號 ${dotData.rfId} 的呼吸特效已移除 (威脅分數: ${dotData.threatScore} 保持不變)`);
+                }
+                
             } catch (error) {
                 console.warn('更新信號點顏色時發生錯誤:', error);
             }
+        }
+        
+        /**
+         * 🆕 創建帶有動畫的 SeaDot 圖示
+         * @param {Object} dotData - 信號點資料
+         * @param {Object} sizes - 大小配置
+         * @param {string} shadowColor - 陰影顏色
+         * @param {string} borderStyle - 邊框樣式
+         * @param {string} animation - 動畫樣式
+         * @returns {L.DivIcon} Leaflet 圖示
+         */
+        createSeaDotIconWithAnimation(dotData, sizes, shadowColor, borderStyle, animation = '') {
+            const helpers = (typeof window !== 'undefined' && window.safePointHelpers) ? window.safePointHelpers : null;
+            const _getDotColor = helpers && typeof helpers.getDotColor === 'function' ? helpers.getDotColor : (p => ((p && p.display && p.display.dotColor) ? p.display.dotColor : (p && p.dotColor) || null));
+            const _getBackgroundColor = helpers && typeof helpers.getBackgroundColor === 'function' ? helpers.getBackgroundColor : (p => ((p && p.display && p.display.backgroundColor) ? p.display.backgroundColor : (p && p.backgroundColor) || (p && p.bgColor) || null));
+            
+            let resolvedBackground;
+            if (dotData && dotData.type === 'Current') {
+                resolvedBackground = '#ef4444'; // 紅色
+            } else if (dotData && dotData.type === 'Future') {
+                resolvedBackground = '#FFD54A'; // 黃色
+            } else {
+                if (typeof _getDotColor === 'function') resolvedBackground = _getDotColor(dotData) || null;
+                if (!resolvedBackground && typeof _getBackgroundColor === 'function') resolvedBackground = _getBackgroundColor(dotData) || null;
+                if (!resolvedBackground) {
+                    resolvedBackground = '#2196F3'; // 藍色預設
+                }
+            }
+
+            return L.divIcon({
+                html: `<div class="sea-dot-inner" style="
+                    background: ${resolvedBackground};
+                    ${borderStyle}
+                    border-radius: ${dotData.borderRadius || '50%'};
+                    width: ${sizes.width}px;
+                    height: ${sizes.height}px;
+                    box-shadow: 0 0 15px ${shadowColor};
+                    ${animation}
+                    opacity: 0.9;
+                    cursor: pointer;
+                    position: relative;
+                    z-index: 1000;
+                    pointer-events: auto;
+                    transform-origin: center center;
+                "></div>`,
+                className: 'custom-event-marker-static',
+                iconSize: sizes.iconSize,
+                iconAnchor: sizes.iconAnchor
+            });
         }
 
         // === SeaDot 動態縮放系統 ===
@@ -817,8 +1047,22 @@
                     borderStyle = `border: 2px solid ${udColor};`;
                 }
                 
-                // 創建新的圖示，使用統一的圖示生成函數
-                const newIcon = this.createSeaDotIcon(dotData, sizes, shadowColor, borderStyle);
+                // 🆕 檢查是否為高威脅信號點並設置動畫
+                const isHighThreat = dotData.isHighThreat || 
+                                    (dotData.threatScore > 80 && dotData.dotColor === '#ef4444' && !dotData.isTracked);
+                
+                const breathingAnimation = isHighThreat 
+                    ? 'animation: high-threat-breathing 2s ease-in-out infinite;' 
+                    : '';
+                
+                // 🔄 使用帶動畫的圖示生成函數（保留呼吸特效）
+                const newIcon = this.createSeaDotIconWithAnimation(
+                    dotData, 
+                    sizes, 
+                    shadowColor, 
+                    borderStyle,
+                    breathingAnimation
+                );
                 
                 // 設置新圖示
                 marker.setIcon(newIcon);

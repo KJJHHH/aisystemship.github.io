@@ -20,7 +20,7 @@
                     // 成功獲取數據，建立可疑船隻候選清單
                     eventData.suspiciousVesselCandidates = rfSignalsInfo.rfIdsWithoutAIS;
                     
-                    // 建立可疑船隻候選詳細資料(包含完整的原始座標資訊)
+                    // 建立可疑船隻候選詳細資料(包含完整的原始座標資訊和威脅分數)
                     eventData.suspiciousVesselCandidatesData = rfSignalsInfo.rfSignalsWithoutAIS.map((signal, index) => {
                         return {
                             rfId: signal.rfId,
@@ -28,6 +28,7 @@
                             strength: signal.strength,
                             index: index,
                             aisStatus: signal.aisStatus,
+                            threatScore: signal.threatScore, // 🆕 從RF信號繼承威脅分數
                             // 保留完整的 sourceSeaDot 資訊以確保座標精度
                             sourceSeaDot: signal.sourceSeaDot
                         };
@@ -63,44 +64,66 @@
 
         // 使用已儲存的數據生成 HTML
         const suspiciousVesselCandidatesHtml = eventData.suspiciousVesselCandidatesData && eventData.suspiciousVesselCandidatesData.length > 0 
-            ? eventData.suspiciousVesselCandidatesData
-                .map((candidateData) => {
-                    // 檢查是否已有儲存的可疑船隻資訊,如果沒有則生成新的
-                    let suspiciousVessel = candidateData.suspiciousVessel;
-                    
-                    if (!suspiciousVessel) {
-                        // 首次生成可疑船隻候選資訊
-                        suspiciousVessel = AreaEventManager.generateSuspiciousVesselCandidate(candidateData);
+            ? (() => {
+                // 先處理所有候選資料
+                const processedCandidates = eventData.suspiciousVesselCandidatesData
+                    .map((candidateData) => {
+                        // 檢查是否已有儲存的可疑船隻資訊,如果沒有則生成新的
+                        let suspiciousVessel = candidateData.suspiciousVessel;
                         
-                        // 將生成的資訊儲存回 candidateData
-                        candidateData.suspiciousVessel = suspiciousVessel;
-                        
-                        // 更新到 eventStorage
-                        if (window.eventStorage && eventData.id) {
-                            const updatedCandidatesData = eventData.suspiciousVesselCandidatesData.map(data => 
-                                data.rfId === candidateData.rfId ? candidateData : data
-                            );
-                            window.eventStorage.updateEvent(eventData.id, { 
-                                suspiciousVesselCandidatesData: updatedCandidatesData 
-                            });
-                            console.log(`💾 已儲存可疑船隻資訊 (RF: ${candidateData.rfId}, MMSI: ${suspiciousVessel?.vesselMmsi})`);
+                        if (!suspiciousVessel) {
+                            // 首次生成可疑船隻候選資訊
+                            suspiciousVessel = AreaEventManager.generateSuspiciousVesselCandidate(candidateData);
+                            
+                            // 將生成的資訊儲存回 candidateData
+                            candidateData.suspiciousVessel = suspiciousVessel;
+                            
+                            // 更新到 eventStorage
+                            if (window.eventStorage && eventData.id) {
+                                const updatedCandidatesData = eventData.suspiciousVesselCandidatesData.map(data => 
+                                    data.rfId === candidateData.rfId ? candidateData : data
+                                );
+                                window.eventStorage.updateEvent(eventData.id, { 
+                                    suspiciousVesselCandidatesData: updatedCandidatesData 
+                                });
+                                console.log(`💾 已儲存可疑船隻資訊 (RF: ${candidateData.rfId}, MMSI: ${suspiciousVessel?.vesselMmsi})`);
+                            }
                         }
-                    }
-                    
-                    return {
-                        candidateData,
-                        suspiciousVessel
-                    };
-                })
-                // 按照威脅分數由大到小排序
-                .sort((a, b) => {
-                    const threatScoreA = a.suspiciousVessel?.threatScore || 0;
-                    const threatScoreB = b.suspiciousVessel?.threatScore || 0;
-                    return threatScoreB - threatScoreA;
-                })
-                // 只顯示威脅分數最高的前三個可疑船隻
-                .slice(0, 3)
-                .map(({ candidateData, suspiciousVessel }) => {
+                        
+                        return {
+                            candidateData,
+                            suspiciousVessel
+                        };
+                    })
+                    // 按照威脅分數由大到小排序
+                    .sort((a, b) => {
+                        const threatScoreA = a.suspiciousVessel?.threatScore || 0;
+                        const threatScoreB = b.suspiciousVessel?.threatScore || 0;
+                        return threatScoreB - threatScoreA;
+                    });
+                
+                // 🆕 過濾出威脅分數超過 80 分的可疑船隻
+                const highThreatVessels = processedCandidates.filter(({ suspiciousVessel }) => {
+                    const threatScore = suspiciousVessel?.threatScore || 0;
+                    return threatScore > 80;
+                });
+                
+                // 🆕 輸出過濾結果日誌
+                console.log(`📊 可疑船隻過濾結果 (事件 ${eventData.id}):`);
+                console.log(`   總候選數: ${processedCandidates.length}`);
+                console.log(`   高威脅船隻 (>80): ${highThreatVessels.length}`);
+                if (highThreatVessels.length > 0) {
+                    console.log(`   威脅分數範圍: ${highThreatVessels[highThreatVessels.length - 1].suspiciousVessel?.threatScore} ~ ${highThreatVessels[0].suspiciousVessel?.threatScore}`);
+                }
+                
+                // 如果沒有高威脅船隻，返回提示訊息
+                if (highThreatVessels.length === 0) {
+                    return '<div style="color: #b8c5d1; text-align: center; padding: 20px;">暫無高威脅船隻 (威脅分數 > 80)</div>';
+                }
+                
+                // 生成高威脅船隻的 HTML
+                return highThreatVessels
+                    .map(({ candidateData, suspiciousVessel }) => {
                 
                 // 可疑船隻候選HTML
                 const suspiciousVesselHtml = suspiciousVessel ? `
@@ -167,17 +190,18 @@
                         </div>
                     </div>
                 `;
-            }).join('')
-            : '<div style="color: #b8c5d1; text-align: center; padding: 20px;">暫無異常候選</div>';
+            }).join('');
+            })()
+            : '<div style="color: #b8c5d1; text-align: center; padding: 20px;">暫無高威脅船隻 (威脅分數 > 80)</div>';
 
         return `
             <div class="summary-section">
                 <div class="section-title">事件簡介</div>
                 <div style="font-size: 13px; line-height: 1.5; color: #b8c5d1;">
                     <strong>監控區域：</strong>${eventData.aoiName || '未設定'}<br>
+                    <strong>監控時間：</strong>${eventData.monitorTimeRange}<br>
                     <strong>中心座標：</strong>${eventData.centerCoordinates || '未設定'}<br>
                     <strong>監控範圍：</strong>${eventData.monitorRange || '未設定'}<br>
-                    <strong>監控時間：</strong>${eventData.monitorTimeRange}<br>
                 </div>
             </div>
 
@@ -313,12 +337,16 @@
                 const frequency = (Math.random() * (470 - 430) + 430).toFixed(1); // 430-470 MHz
                 const strength = Math.floor(Math.random() * 50 + 30); // 30-80 dBm
                 
+                // 🆕 在創建RF信號時就初始化威脅分數 (60-90範圍)
+                const threatScore = Math.floor(Math.random() * 31) + 60; // 60-90
+                
                 return {
                     rfId: dot.rfId || `rf_${dot.id}_${index}`,
                     frequency: `${frequency} MHz`,
                     strength: `${strength} dBm`,
                     aisStatus: '未開啟', // 明確設定AIS狀態
                     detection_time: new Date().toLocaleString('zh-TW'),
+                    threatScore: threatScore, // 🆕 添加威脅分數
                     // 保留完整的原始監測點資訊
                     sourceSeaDot: {
                         id: dot.id,
@@ -458,7 +486,7 @@
 
     /**
      * 為RF信號生成可疑船隻候選資訊
-     * @param {Object} candidateData - 候選數據(包含sourceSeaDot)
+     * @param {Object} candidateData - 候選數據(包含sourceSeaDot和threatScore)
      * @returns {Object|null} 可疑船隻候選資訊或null
      */
     static generateSuspiciousVesselCandidate(candidateData) {
@@ -473,6 +501,45 @@
 
             const rfLat = candidateData.sourceSeaDot.lat;
             const rfLon = candidateData.sourceSeaDot.lon;
+            const rfId = candidateData.rfId;
+            
+            // 🆕 優先使用已經在創建區域事件時初始化的威脅分數
+            const threatScore = candidateData.threatScore || Math.floor(Math.random() * 31) + 60; // 60-90
+
+            // 🔄 將威脅分數回寫到對應的 RF 信號點
+            if (rfId && window.seaDotManager) {
+                const allDots = window.seaDotManager.getAllDots();
+                const targetDot = allDots.find(dot => dot.rfId === rfId);
+                
+                if (targetDot) {
+                    // 更新威脅分數到原始信號點
+                    targetDot.threatScore = threatScore;
+                    
+                    // 🆕 標記高威脅信號點 (threatScore > 80)
+                    if (threatScore > 80) {
+                        targetDot.isHighThreat = true;
+                        console.log(`🚨 檢測到高威脅RF信號 ${rfId}，威脅分數: ${threatScore}`);
+                    } else {
+                        targetDot.isHighThreat = false;
+                    }
+                    
+                    // 更新 seaDotManager 中的數據
+                    if (targetDot.id && window.seaDotManager.seaDots) {
+                        const storedDot = window.seaDotManager.seaDots.get(targetDot.id);
+                        if (storedDot) {
+                            storedDot.threatScore = threatScore;
+                            storedDot.isHighThreat = targetDot.isHighThreat; // 🆕 同步高威脅標記
+                            window.seaDotManager.seaDots.set(targetDot.id, storedDot);
+                            console.log(`💾 已將威脅分數 ${threatScore} 儲存至 RF 信號點 ${rfId} (ID: ${targetDot.id})${targetDot.isHighThreat ? ' [高威脅]' : ''}`);
+                            
+                            // 🔄 移除立即更新標記特效（由 applyHighThreatBreathingEffect 統一處理）
+                            // 這樣可以避免時序問題，確保所有資料準備完成後才應用特效
+                        }
+                    }
+                } else {
+                    console.warn(`⚠️ 未找到 RF ID 為 ${rfId} 的信號點`);
+                }
+            }
 
             // 檢查是否有船隻數據可用
             if (!window.vesselMarkers || Object.keys(window.vesselMarkers).length === 0) {
@@ -483,7 +550,7 @@
                         type: ['貨輪', '漁船',][Math.floor(Math.random() * 2)],
                         lat: rfLat + (Math.random() - 0.5) * 0.01, // 在RF信號附近隨機生成
                         lon: rfLon + (Math.random() - 0.5) * 0.01,
-                        threatScore: Math.floor(Math.random() * 60) + 31, // 40-90的高威脅分數
+                        threatScore: threatScore, // 🆕 使用繼承的威脅分數
                         aisStatus: '未開啟'
                     }
                 ];
@@ -493,11 +560,35 @@
                 // 計算距離
                 const distance = this.calculateDistance(rfLat, rfLon, candidate.lat, candidate.lon);
                 
+                // 🆕 將船隻 MMSI 和相關資訊儲存回 RF 信號點
+                if (rfId && window.seaDotManager) {
+                    const allDots = window.seaDotManager.getAllDots();
+                    const targetDot = allDots.find(dot => dot.rfId === rfId);
+                    
+                    if (targetDot) {
+                        targetDot.vesselMmsi = candidate.mmsi;
+                        targetDot.vesselType = candidate.type;
+                        targetDot.vesselAisStatus = candidate.aisStatus;
+                        
+                        // 更新到 seaDotManager.seaDots
+                        if (targetDot.id && window.seaDotManager.seaDots) {
+                            const storedDot = window.seaDotManager.seaDots.get(targetDot.id);
+                            if (storedDot) {
+                                storedDot.vesselMmsi = candidate.mmsi;
+                                storedDot.vesselType = candidate.type;
+                                storedDot.vesselAisStatus = candidate.aisStatus;
+                                window.seaDotManager.seaDots.set(targetDot.id, storedDot);
+                                console.log(`💾 已將船隻 MMSI ${candidate.mmsi} (${candidate.type}) 儲存至 RF 信號點 ${rfId}`);
+                            }
+                        }
+                    }
+                }
+                
                 return {
                     vesselMmsi: candidate.mmsi,
                     vesselType: candidate.type,
                     distance: distance.toFixed(2),
-                    threatScore: candidate.threatScore,
+                    threatScore: candidate.threatScore, // 🆕 返回繼承的威脅分數
                     aisStatus: candidate.aisStatus,
                     // 直接使用 sourceSeaDot 的座標
                     lat: rfLat,
@@ -520,12 +611,40 @@
             });
 
             if (closestVessel) {
+                const vesselMmsi = closestVessel.mmsi || closestVessel.name || '未知船隻';
+                const vesselType = closestVessel.type || '不明';
+                const vesselAisStatus = closestVessel.aisStatus || 'AIS異常';
+                
+                // 🆕 將真實船隻 MMSI 和相關資訊儲存回 RF 信號點
+                if (rfId && window.seaDotManager) {
+                    const allDots = window.seaDotManager.getAllDots();
+                    const targetDot = allDots.find(dot => dot.rfId === rfId);
+                    
+                    if (targetDot) {
+                        targetDot.vesselMmsi = vesselMmsi;
+                        targetDot.vesselType = vesselType;
+                        targetDot.vesselAisStatus = vesselAisStatus;
+                        
+                        // 更新到 seaDotManager.seaDots
+                        if (targetDot.id && window.seaDotManager.seaDots) {
+                            const storedDot = window.seaDotManager.seaDots.get(targetDot.id);
+                            if (storedDot) {
+                                storedDot.vesselMmsi = vesselMmsi;
+                                storedDot.vesselType = vesselType;
+                                storedDot.vesselAisStatus = vesselAisStatus;
+                                window.seaDotManager.seaDots.set(targetDot.id, storedDot);
+                                console.log(`💾 已將船隻 MMSI ${vesselMmsi} (${vesselType}) 儲存至 RF 信號點 ${rfId}`);
+                            }
+                        }
+                    }
+                }
+                
                 return {
-                    vesselMmsi: closestVessel.mmsi || closestVessel.name || '未知船隻',
-                    vesselType: closestVessel.type || '不明',
+                    vesselMmsi: vesselMmsi,
+                    vesselType: vesselType,
                     distance: minDistance.toFixed(2),
-                    threatScore: closestVessel.threatScore || Math.floor(Math.random() * 40) + 60,
-                    aisStatus: closestVessel.aisStatus || 'AIS異常',
+                    threatScore: threatScore, // 🆕 使用繼承的威脅分數而非隨機生成
+                    aisStatus: vesselAisStatus,
                     // 直接使用 sourceSeaDot 的座標
                     lat: rfLat,
                     lon: rfLon

@@ -194,9 +194,14 @@
                             ${eventData.aisStatus === '已開啟' ? 'AIS已開啟' : 'AIS未開啟'}
                         </span>
                     </div>
-                    <div class="ship-image-container">
+                    ${(function() {
+                        if (eventData.aisStatus === '已開啟') {
+                            return `<div class="ship-image-container">
                         <img src="${shipInfo.image}" alt="${shipInfo.type}" class="ship-image" />
-                    </div>
+                    </div>`;
+                        }
+                        return '';
+                    })()}
                     <div class="ship-details">
                         <div class="detail-row"><span>MMSI:</span><span>${shipInfo.mmsi}</span></div>
                         <div class="detail-row"><span>船名:</span><span>${shipInfo.name || eventData.vesselName || '未知'}</span></div>
